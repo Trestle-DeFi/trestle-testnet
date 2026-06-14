@@ -1,0 +1,12 @@
+name = "trestle-vault"
+main = "src/index.js"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+[triggers]
+crons = ["5 0 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "trestle-reward-db"
+database_id = "8bea5e4b-b43a-49a6-90e0-ba9b3fa949c9"
