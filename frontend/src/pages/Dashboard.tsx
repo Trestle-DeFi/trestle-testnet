@@ -44,26 +44,26 @@ export default function Dashboard() {
         {address && <p className="text-[10px] opacity-60 mt-2">{address.slice(0, 6)}...{address.slice(-4)}</p>}
       </div>
 
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Virtual Vault</h2>
-        {[
-          { title: "Stake hNOBT", desc: "Lock hNOBT to earn BTR yield", href: "/stake/tier1", color: "emerald" },
-          { title: "LP Staking", desc: "Stake BRT/WMATIC LP for rewards", href: "/stake/tier2", color: "blue" },
-          { title: "Governor Vault", desc: "Deposit LP for governance tokens", href: "/stake/tier3", color: "purple" },
-        ].map((card) => (
-          <a key={card.href} href={card.href}
-            className={`block p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow`}>
-            <h3 className="font-semibold text-sm text-gray-900">{card.title}</h3>
-            <p className="text-[11px] text-gray-500 mt-1">{card.desc}</p>
-          </a>
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Marketplace</h2>
-        <a href="/marketplace" className="block p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
-          <h3 className="font-semibold text-sm text-amber-600">Digital Goods & Freelancers</h3>
-          <p className="text-[11px] text-gray-500 mt-1">Browse listings, buy digital assets, hire freelancers</p>
+      <div className="grid grid-cols-2 gap-3">
+        <a href="/stake" className="block p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
+          <span className="text-lg">📈</span>
+          <h3 className="font-semibold text-sm mt-1">Stake</h3>
+          <p className="text-[10px] text-gray-500">Lock hNOBT & earn BTR yield</p>
+        </a>
+        <a href="/tasks" className="block p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
+          <span className="text-lg">📋</span>
+          <h3 className="font-semibold text-sm mt-1">Tasks</h3>
+          <p className="text-[10px] text-gray-500">Earn hNOBT points</p>
+        </a>
+        <a href="/verify" className="block p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
+          <span className="text-lg">✅</span>
+          <h3 className="font-semibold text-sm mt-1">Verify</h3>
+          <p className="text-[10px] text-gray-500">Passport + biometric</p>
+        </a>
+        <a href="/withdraw" className="block p-4 rounded-xl border border-gray-200 bg-white hover:shadow-md transition-shadow">
+          <span className="text-lg">💰</span>
+          <h3 className="font-semibold text-sm mt-1">Withdraw</h3>
+          <p className="text-[10px] text-gray-500">Claim BTR rewards</p>
         </a>
       </div>
     </div>

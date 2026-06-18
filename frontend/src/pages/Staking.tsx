@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useContracts } from "../hooks/useContracts";
 import { getVaultBalance, setVaultStaking, getVaultTiers, applyYield, type VirtualBalance, type StakingTier } from "../lib/vault";
 
-export default function Tier1Staking() {
+export default function Staking() {
   const { address, isConnected } = useContracts();
   const [vault, setVault] = useState<VirtualBalance | null>(null);
   const [tiers, setTiers] = useState<StakingTier[]>([]);

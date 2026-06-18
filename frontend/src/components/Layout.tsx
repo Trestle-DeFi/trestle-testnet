@@ -3,6 +3,7 @@ import { Outlet, NavLink } from "react-router-dom";
 import { useContracts } from "../hooks/useContracts";
 import { LINKS } from "../config/contracts";
 import WalletStatus from "./WalletStatus";
+import AstraChat from "./AstraChat";
 
 const EXTERNAL_LINKS = [
   { href: LINKS.mainSite, label: "Landing Page" },
@@ -11,10 +12,9 @@ const EXTERNAL_LINKS = [
 
 const DASHBOARD_TABS = [
   { to: "/", label: "Dashboard", icon: "🏠" },
-  { to: "/marketplace", label: "Market", icon: "🏪" },
-  { to: "/stake/tier1", label: "Stake T1", icon: "📈" },
-  { to: "/stake/tier2", label: "Stake T2", icon: "📊" },
-  { to: "/stake/tier3", label: "Vault", icon: "🔒" },
+  { to: "/stake", label: "Stake", icon: "📈" },
+  { to: "/tasks", label: "Tasks", icon: "📋" },
+  { to: "/verify", label: "Verify", icon: "✅" },
   { to: "/withdraw", label: "Wallet", icon: "💰" },
 ];
 
@@ -111,6 +111,7 @@ export default function Layout() {
       <main className="max-w-lg mx-auto px-4 py-4 pb-8">
         <Outlet />
       </main>
+      <AstraChat />
     </div>
   );
 }

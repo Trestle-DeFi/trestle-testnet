@@ -1,21 +1,21 @@
 # Telegram Mini-App Frontend
 
-React/Vite Telegram Mini-App for Trestle DeFi. Wallet connection via Reown AppKit + wagmi. Telegram TWA via @telegram-apps/sdk.
+React/Vite Telegram Mini-App for Trestle DeFi. Wallet via Reown AppKit + wagmi. Testnet contracts on Amoy + Virtual Vault for off-chain staking.
 
 ## Pages
 
-- **Dashboard** — User overview
-- **Marketplace** — Buy/sell digital goods
-- **Tier1 Staking** — Stake Tier 1 pool
-- **Tier2 Staking** — Stake Tier 2 pool
-- **Tier3 Staking** — Stake Tier 3 pool (vault)
-- **Withdraw** — Withdraw interface
-- **Astra AI** — AI chat assistant
+- **Dashboard** — Vault balance overview, quick links
+- **Stake** — Lock virtual hNOBT, earn BTR yield
+- **Tasks** — Earn hNOBT points by completing tasks
+- **Verify** — Stage 1 (Gitcoin Passport) + Stage 2 (biometric)
+- **Marketplace** — Testnet digital goods stub
+- **Withdraw** — Yield refresh + on-chain settlement voucher
+- **Astra AI** — AI chat assistant (floating widget)
 
 ## Setup
 
 ```bash
-cp .env.example .env   # fill in VITE_WALLETCONNECT_PROJECT_ID, etc.
+cp .env.example .env   # fill in VITE_WALLETCONNECT_PROJECT_ID
 npm install
 npm run dev             # http://localhost:5173
 npm run build
@@ -26,8 +26,8 @@ npm run build
 | Variable | Description |
 |---|---|
 | `VITE_WALLETCONNECT_PROJECT_ID` | Reown Cloud project ID |
-| `VITE_API_URL` | Reward worker API |
-| `VITE_VAULT_API_URL` | Vault worker API |
+| `VITE_API_URL` | Reward worker API (`https://reward-api.trestle.website`) |
+| `VITE_VAULT_API_URL` | Vault worker API (`https://vault.trestle.website`) |
 
 ---
 

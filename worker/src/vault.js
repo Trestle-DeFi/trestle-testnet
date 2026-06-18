@@ -24,6 +24,7 @@ const STAKING_TIERS = [
 ];
 
 const YEAR_SECONDS = 31536000;
+const VERIFICATION_TTL = 90 * 24 * 60 * 60; // 90 days in seconds
 
 export function getTierInfo(tierId) {
   return STAKING_TIERS[tierId] || null;
@@ -93,6 +94,21 @@ export async function generateSettlementVoucher(env, address) {
   if (!signerAccount) throw new Error("Vault signer not initialized");
 
   const db = env.DB;
+
+  // Require biometric verification for Virtual Vault withdrawals (valid 90 days)
+  const biometric = await db.prepare(
+    "SELECT fully_verified, verified_at FROM biometric_verification WHERE user_address = ? AND fully_verified = 1"
+  ).bind(address).first();
+
+  if (!biometric) {
+    throw new Error("Biometric verification required for Virtual Vault withdrawal");
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if ((now - biometric.verified_at) > VERIFICATION_TTL) {
+    throw new Error("Biometric verification expired - re-verify required");
+  }
+
   const bal = await applyYield(db, address);
 
   if (BigInt(bal.btr_claimable) <= 0n && BigInt(bal.virtual_hnobt) <= 0n) {
@@ -111,7 +127,7 @@ export async function generateSettlementVoucher(env, address) {
   const btrAmount = bal.btr_claimable;
   const hNobtStaked = bal.virtual_hnobt;
 
-  const chainId = parseInt(env.CHAIN_ID || "137");
+  const chainId = 137;
 
   const domain = {
     name: "Trestle-DeFi-Hub",

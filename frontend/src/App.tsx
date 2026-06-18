@@ -4,9 +4,9 @@ import { useTelegram } from "./hooks/useTelegram";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Marketplace from "./pages/Marketplace";
-import Tier1Staking from "./pages/Tier1Staking";
-import Tier2Staking from "./pages/Tier2Staking";
-import Tier3Vault from "./pages/Tier3Vault";
+import Staking from "./pages/Staking";
+import Verify from "./pages/Verify";
+import Tasks from "./pages/Tasks";
 import Withdraw from "./pages/Withdraw";
 
 export default function App() {
@@ -23,9 +23,10 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/marketplace" element={<Marketplace />} />
-          <Route path="/stake/tier1" element={<Tier1Staking />} />
-          <Route path="/stake/tier2" element={<Tier2Staking />} />
-          <Route path="/stake/tier3" element={<Tier3Vault />} />
+          <Route path="/stake" element={<Staking />} />
+          <Route path="/verify" element={<Verify />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/withdraw" element={<Withdraw />} />
         </Route>
       </Routes>

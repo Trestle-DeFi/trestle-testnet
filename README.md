@@ -64,7 +64,7 @@
 - **Website**: [https://trestle.website](https://trestle.website)
 - **GitHub**: [Trestle DeFi](https://github.com/Trestle-DeFi)
 - **Discord**: [Trestle DeFi](https://discord.gg/4dCCvnJYGT)
-- **Telegram**: [Trestle Pro](https://t.me/TrestleDeFi)
+- **Telegram**: [Trestle DeFi](https://t.me/TrestleDeFi)
 - **Email**: contact@trestle.website
 
 ---

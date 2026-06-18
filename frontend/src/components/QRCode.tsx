@@ -5,7 +5,7 @@ type Props = {
   size?: number;
 };
 
-export default function QRCode({ value = LINKS.rewardSite, size = 140 }: Props) {
+export default function QRCode({ value = LINKS.mainSite, size = 140 }: Props) {
   return (
     <div className="bg-white p-2 rounded-xl shadow-lg border border-gray-100 text-center">
       <img
