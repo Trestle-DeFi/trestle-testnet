@@ -1,35 +1,15 @@
-import { http, fallback } from "viem";
-import { polygonAmoy, baseSepolia, arbitrumSepolia } from "viem/chains";
+import { http } from "viem";
+import { polygonAmoy } from "viem/chains";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import { createAppKit } from "@reown/appkit/react";
 
-export const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
-
-const AMOY_RPC = [
-  "https://polygon-amoy.drpc.org",
-  "https://rpc-amoy.polygon.technology/",
-  "https://amoy.blockscout.com/rpc",
-];
-
-const BASE_SEPOLIA_RPC = [
-  "https://sepolia.base.org",
-  "https://base-sepolia.drpc.org",
-];
-
-const ARB_SEPOLIA_RPC = [
-  "https://sepolia-rollup.arbitrum.io/rpc",
-  "https://arbitrum-sepolia.drpc.org",
-];
-
-const chains = [polygonAmoy, baseSepolia, arbitrumSepolia];
+export const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ?? "";
 
 const wagmiAdapter = new WagmiAdapter({
   projectId,
-  networks: chains,
+  networks: [polygonAmoy],
   transports: {
-    [polygonAmoy.id]: fallback(AMOY_RPC.map(url => http(url, { retryCount: 3, retryDelay: 1000 }))),
-    [baseSepolia.id]: fallback(BASE_SEPOLIA_RPC.map(url => http(url, { retryCount: 3, retryDelay: 1000 }))),
-    [arbitrumSepolia.id]: fallback(ARB_SEPOLIA_RPC.map(url => http(url, { retryCount: 3, retryDelay: 1000 }))),
+    [polygonAmoy.id]: http("https://polygon-amoy.drpc.org", { retryCount: 3, retryDelay: 1000 }),
   },
 });
 
@@ -38,16 +18,12 @@ export const config = wagmiAdapter.wagmiConfig;
 createAppKit({
   adapters: [wagmiAdapter],
   projectId,
-  networks: chains as [typeof polygonAmoy, typeof baseSepolia, typeof arbitrumSepolia],
-  chainImages: {
-    [polygonAmoy.id]: "/chain/polygon.svg",
-    [arbitrumSepolia.id]: "/chain/arbitrum.svg",
-  },
+  networks: [polygonAmoy],
   metadata: {
     name: "Trestle Testnet",
-    description: "Trestle DeFi Multi-Chain Testnet Hub",
+    description: "Trestle DeFi Testnet Hub",
     url: "https://testnet.trestle.website",
-    icons: ["https://testnet.trestle.website/favicon.svg"],
+    icons: ["/favicon.ico"],
   },
   features: {
     email: true,
@@ -60,4 +36,4 @@ createAppKit({
   },
 });
 
-export { polygonAmoy, baseSepolia, arbitrumSepolia };
+export { polygonAmoy };

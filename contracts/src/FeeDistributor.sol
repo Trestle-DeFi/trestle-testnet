@@ -8,10 +8,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract FeeDistributor is Ownable {
     using SafeERC20 for IERC20;
 
+    error Unauthorized();
     error NoFees();
-    error ZeroAddress();
-    error InvalidSplit();
-    error TransferFailed();
 
     uint256 private constant BPS = 10000;
     uint256 public yieldBps = 4000;
@@ -22,43 +20,40 @@ contract FeeDistributor is Ownable {
     address public buybackBurn;
 
     event Distributed(address indexed token, uint256 total, uint256 yieldShare, uint256 treasuryShare, uint256 buybackShare);
-    event YieldVaultUpdated(address indexed newVault);
-    event TreasuryUpdated(address indexed newTreasury);
-    event BuybackBurnUpdated(address indexed newBuybackBurn);
-    event SplitUpdated(uint256 yieldBps, uint256 treasuryBps);
+    event ConfigUpdated(string indexed param);
 
-    constructor(address _treasury, address _buybackBurn) Ownable(msg.sender) {
-        if (_treasury == address(0) || _buybackBurn == address(0)) revert ZeroAddress();
+    constructor(address _treasury) Ownable(msg.sender) {
         treasury = _treasury;
-        buybackBurn = _buybackBurn;
     }
 
     function setYieldVault(address _yieldVault) external onlyOwner {
-        if (_yieldVault == address(0)) revert ZeroAddress();
+        require(_yieldVault != address(0), "Zero address");
         yieldVault = _yieldVault;
-        emit YieldVaultUpdated(_yieldVault);
+        emit ConfigUpdated("yieldVault");
     }
 
     function setTreasury(address _treasury) external onlyOwner {
-        if (_treasury == address(0)) revert ZeroAddress();
+        require(_treasury != address(0), "Zero address");
         treasury = _treasury;
-        emit TreasuryUpdated(_treasury);
+        emit ConfigUpdated("treasury");
     }
 
     function setBuybackBurn(address _buybackBurn) external onlyOwner {
-        if (_buybackBurn == address(0)) revert ZeroAddress();
+        require(_buybackBurn != address(0), "Zero address");
         buybackBurn = _buybackBurn;
-        emit BuybackBurnUpdated(_buybackBurn);
+        emit ConfigUpdated("buybackBurn");
     }
 
     function setSplitBps(uint256 _yieldBps, uint256 _treasuryBps) external onlyOwner {
-        if (_yieldBps + _treasuryBps != BPS) revert InvalidSplit();
+        require(_yieldBps + _treasuryBps < BPS, "Split overflow");
         yieldBps = _yieldBps;
         treasuryBps = _treasuryBps;
-        emit SplitUpdated(_yieldBps, _treasuryBps);
+        emit ConfigUpdated("split");
     }
 
-    function distribute(address token) external onlyOwner {
+    function distribute(address token) external {
+        if (msg.sender != owner() && msg.sender != yieldVault) revert Unauthorized();
+
         uint256 balance;
         if (token == address(0)) {
             balance = address(this).balance;
@@ -79,11 +74,10 @@ contract FeeDistributor is Ownable {
     }
 
     function _transfer(address token, address to, uint256 amount) private {
-        if (to == address(0)) revert ZeroAddress();
-        if (amount == 0) return;
+        if (to == address(0) || amount == 0) return;
         if (token == address(0)) {
             (bool s,) = payable(to).call{value: amount}("");
-            if (!s) revert TransferFailed();
+            require(s, "ETH transfer failed");
         } else {
             IERC20(token).safeTransfer(to, amount);
         }

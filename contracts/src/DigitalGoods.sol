@@ -27,28 +27,23 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         uint256 createdAt;
         uint256 disputeDeadline;
         bool deliveryConfirmed;
-        address paymentToken;
-        string category;
-        string deliveryURI;
     }
 
     uint256 public listingCount;
     uint256 public constant DISPUTE_TIMEOUT = 7 days;
-    uint256 public constant PLATFORM_FEE_BPS = 300;
+    uint256 public constant PLATFORM_FEE_BPS = 250;
     uint256 public constant BPS = 10000;
 
-    address public treasury;
     mapping(uint256 => Listing) public listings;
     mapping(uint256 => string) public deliveryHashes;
 
-    event Listed(uint256 indexed id, address indexed seller, PricingMode pricing, uint256 price, string metadataURI, string category);
+    event Listed(uint256 indexed id, address indexed seller, PricingMode pricing, uint256 price, string metadataURI);
     event Purchased(uint256 indexed id, address indexed buyer, uint256 paid);
     event DeliverySubmitted(uint256 indexed id, string deliveryHash);
     event DeliveryConfirmed(uint256 indexed id);
     event Disputed(uint256 indexed id);
     event Resolved(uint256 indexed id, bool toBuyer);
     event Cancelled(uint256 indexed id);
-    event TreasuryUpdated(address indexed newTreasury);
 
     error NotSeller();
     error NotBuyer();
@@ -56,40 +51,22 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
     error AlreadyConfirmed();
     error PriceTooLow();
     error NoRefundNeeded();
-    error ZeroAddress();
-    error TransferFailed();
 
-    constructor(address _treasury) Ownable(msg.sender) {
-        if (_treasury == address(0)) revert ZeroAddress();
-        treasury = _treasury;
-    }
+    constructor() Ownable(msg.sender) {}
 
-    function setTreasury(address _treasury) external onlyOwner {
-        if (_treasury == address(0)) revert ZeroAddress();
-        treasury = _treasury;
-        emit TreasuryUpdated(_treasury);
-    }
-
-    function listFixed(
-        string calldata _metadataURI,
-        uint256 _price,
-        string calldata _category,
-        string calldata _deliveryURI
-    ) external returns (uint256) {
+    function listFixed(string calldata _metadataURI, uint256 _price) external returns (uint256) {
         if (_price == 0) revert PriceTooLow();
-        return _list(_metadataURI, PricingMode.Fixed, _price, 0, 0, 0, _category, _deliveryURI);
+        return _list(_metadataURI, PricingMode.Fixed, _price, 0, 0, 0);
     }
 
     function listDutch(
         string calldata _metadataURI,
         uint256 _startPrice,
         uint256 _reservePrice,
-        uint256 _duration,
-        string calldata _category,
-        string calldata _deliveryURI
+        uint256 _duration
     ) external returns (uint256) {
         DutchAuctionLib.validate(_startPrice, _reservePrice, _duration);
-        return _list(_metadataURI, PricingMode.DutchAuction, _startPrice, _reservePrice, _duration, block.timestamp, _category, _deliveryURI);
+        return _list(_metadataURI, PricingMode.DutchAuction, _startPrice, _reservePrice, _duration, block.timestamp);
     }
 
     function _list(
@@ -98,9 +75,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         uint256 _price,
         uint256 _reservePrice,
         uint256 _duration,
-        uint256 _startedAt,
-        string calldata _category,
-        string calldata _deliveryURI
+        uint256 _startedAt
     ) private returns (uint256) {
         listingCount++;
         uint256 id = listingCount;
@@ -116,12 +91,9 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
             escrowedAmount: 0,
             createdAt: block.timestamp,
             disputeDeadline: 0,
-            deliveryConfirmed: false,
-            paymentToken: address(0),
-            category: _category,
-            deliveryURI: _deliveryURI
+            deliveryConfirmed: false
         });
-        emit Listed(id, msg.sender, _pricing, _price, _metadataURI, _category);
+        emit Listed(id, msg.sender, _pricing, _price, _metadataURI);
         return id;
     }
 
@@ -144,17 +116,16 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
 
         l.status = ListingStatus.Sold;
         l.buyer = msg.sender;
-        l.paymentToken = address(0);
         l.escrowedAmount = sellerAmount;
         l.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
 
-        (bool feeSent,) = treasury.call{value: fee}("");
-        if (!feeSent) revert TransferFailed();
+        (bool feeSent,) = owner().call{value: fee}("");
+        require(feeSent, "Fee transfer failed");
 
         uint256 excess = msg.value - price;
         if (excess > 0) {
             (bool refund,) = msg.sender.call{value: excess}("");
-            if (!refund) revert TransferFailed();
+            require(refund, "Refund failed");
         }
 
         emit Purchased(_id, msg.sender, price);
@@ -172,10 +143,9 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         uint256 sellerAmount = price - fee;
 
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        if (fee > 0) IERC20(_token).safeTransfer(treasury, fee);
+        if (fee > 0) IERC20(_token).safeTransfer(owner(), fee);
         l.status = ListingStatus.Sold;
         l.buyer = msg.sender;
-        l.paymentToken = _token;
         l.escrowedAmount = sellerAmount;
         l.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
 
@@ -208,7 +178,6 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         Listing storage l = listings[_id];
         if (msg.sender != l.buyer && msg.sender != l.seller) revert WrongStatus();
         if (l.status != ListingStatus.Sold || l.deliveryConfirmed) revert WrongStatus();
-        if (block.timestamp > l.disputeDeadline) revert WrongStatus();
 
         l.status = ListingStatus.Disputed;
         emit Disputed(_id);
@@ -216,7 +185,6 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
 
     function resolveAfterTimeout(uint256 _id) external nonReentrant {
         Listing storage l = listings[_id];
-        if (msg.sender != l.buyer && msg.sender != l.seller) revert WrongStatus();
         if (l.status != ListingStatus.Disputed && l.status != ListingStatus.Sold) revert WrongStatus();
         if (l.deliveryConfirmed) revert AlreadyConfirmed();
         if (block.timestamp < l.disputeDeadline) revert WrongStatus();
@@ -245,12 +213,8 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (l.escrowedAmount == 0) revert NoRefundNeeded();
         uint256 amount = l.escrowedAmount;
         l.escrowedAmount = 0;
-        if (l.paymentToken == address(0)) {
-            (bool sent,) = l.seller.call{value: amount}("");
-            if (!sent) revert TransferFailed();
-        } else {
-            IERC20(l.paymentToken).safeTransfer(l.seller, amount);
-        }
+        (bool sent,) = l.seller.call{value: amount}("");
+        require(sent, "Payment failed");
     }
 
     function _releaseToBuyer(uint256 _id) private {
@@ -258,11 +222,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (l.escrowedAmount == 0) revert NoRefundNeeded();
         uint256 amount = l.escrowedAmount;
         l.escrowedAmount = 0;
-        if (l.paymentToken == address(0)) {
-            (bool sent,) = l.buyer.call{value: amount}("");
-            if (!sent) revert TransferFailed();
-        } else {
-            IERC20(l.paymentToken).safeTransfer(l.buyer, amount);
-        }
+        (bool sent,) = l.buyer.call{value: amount}("");
+        require(sent, "Refund failed");
     }
 }

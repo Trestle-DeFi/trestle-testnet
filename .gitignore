@@ -6,11 +6,3 @@ node_modules/
 artifacts/
 cache/
 typechain-types/
-.next/
-out/
-dist/
-verify/
-verify-*.json
-*.d.ts
-*-checkpoint.json
-.env.*
