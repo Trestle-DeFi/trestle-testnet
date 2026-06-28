@@ -16,33 +16,23 @@ const EXAMPLE_INFO = {
 function parseAssetInfo(raw: unknown): typeof EXAMPLE_INFO | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const r = raw as Record<string, unknown>;
-  if (typeof r.name !== "string" || typeof r.description !== "string") return undefined;
-  return {
-    name: typeof r.name === "string" ? r.name : "",
-    description: typeof r.description === "string" ? r.description : "",
-    lockupDuration: typeof r.lockupDuration === "bigint" ? r.lockupDuration : typeof r.lockupDuration === "number" ? BigInt(r.lockupDuration) : 0n,
-    expectedReturnBps: typeof r.expectedReturnBps === "bigint" ? r.expectedReturnBps : typeof r.expectedReturnBps === "number" ? BigInt(r.expectedReturnBps) : 0n,
-    underlyingAsset: typeof r.underlyingAsset === "string" ? r.underlyingAsset : "",
-    redemptionDate: typeof r.redemptionDate === "bigint" ? r.redemptionDate : typeof r.redemptionDate === "number" ? BigInt(r.redemptionDate) : 0n,
-    redemptionPrice: typeof r.redemptionPrice === "bigint" ? r.redemptionPrice : typeof r.redemptionPrice === "number" ? BigInt(r.redemptionPrice) : 0n,
-  };
+  if (typeof r.name !== "string") return undefined;
+  return r as typeof EXAMPLE_INFO;
 }
 
 export default function RWA() {
-  const { address, isConnected, rwaReady, rwaAddr, rwaABI, explorer, setWhitelistToken } = useContracts();
+  const { address, isConnected, rwaReady, rwaAddr, rwaABI } = useContracts();
   const { connector } = useAccount();
   const { writeContractAsync } = useWriteContract();
 
   const [mintAmount, setMintAmount] = useState("100");
-  const [subAmount, setSubAmount] = useState("0.00001");
+  const [subAmount, setSubAmount] = useState("10");
   const [wlAddr, setWlAddr] = useState("");
-  const [wlToken, setWlToken] = useState("");
-  const [wlMinBal, setWlMinBal] = useState("100");
   const [busy, setBusy] = useState(false);
   const [txHash, setTxHash] = useState("");
 
   const { data: whitelisted } = useReadContract({
-    abi: rwaABI, address: rwaAddr, functionName: "isWhitelisted",
+    abi: rwaABI, address: rwaAddr, functionName: "whitelisted",
     args: address ? [address] : undefined, query: { enabled: rwaReady && !!address },
   });
   const { data: totalSupply } = useReadContract({
@@ -63,18 +53,6 @@ export default function RWA() {
   });
   const { data: owner } = useReadContract({
     abi: rwaABI, address: rwaAddr, functionName: "owner",
-    query: { enabled: rwaReady },
-  });
-  const { data: currentPrice } = useReadContract({
-    abi: rwaABI, address: rwaAddr, functionName: "currentPrice",
-    query: { enabled: rwaReady },
-  });
-  const { data: lastPriceUpdate } = useReadContract({
-    abi: rwaABI, address: rwaAddr, functionName: "lastPriceUpdate",
-    query: { enabled: rwaReady },
-  });
-  const { data: priceFeedAddr } = useReadContract({
-    abi: rwaABI, address: rwaAddr, functionName: "priceFeed",
     query: { enabled: rwaReady },
   });
 
@@ -111,27 +89,6 @@ export default function RWA() {
     finally { setBusy(false); }
   }
 
-  async function handleSetWhitelistToken() {
-    if (!rwaReady || busy || !wlToken) return;
-    setBusy(true); setTxHash("");
-    try {
-      const hash = await setWhitelistToken(wlToken as Address, wlMinBal || "0");
-      setTxHash(hash);
-    } catch (e: any) { console.error(e); }
-    finally { setBusy(false); }
-  }
-
-  async function handleSyncPrice() {
-    if (!rwaReady || busy) return;
-    setBusy(true); setTxHash("");
-    try {
-      const hash = await writeContractAsync({ abi: rwaABI, address: rwaAddr, functionName: "syncPrice", args: [], connector } as any);
-      setTxHash(hash);
-    } catch (e: any) { console.error(e); }
-    finally { setBusy(false); }
-  }
-
-
   if (!isConnected) {
     return (
       <div className="text-center py-12">
@@ -147,18 +104,14 @@ export default function RWA() {
       <h2 className="text-xl font-semibold">Real World Assets (RWA)</h2>
       <p className="text-sm text-gray-500">Tokenized real-world assets require KYC verification.</p>
 
-      {/* walkthrough */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 leading-relaxed">
-        <strong>RWA Guide:</strong> Assets are whitelist-gated for compliance.
-        1) Go to <strong>Faucet</strong> and mint <strong>1000 USDC</strong>.
-        2) Hold 1000+ USDC — you are automatically whitelisted (token-gated).
-        3) Use <strong>Subscribe</strong> to mint DA1 tokens by sending POL (1 POL = 1 DA1, minimum ~0.00001 POL).
-        Token holders earn yield and can redeem at the redemption date.
-      </div>
-
-      {!rwaReady && (
+      {!isConnected && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+          <p className="text-sm text-blue-700">Connect wallet to Polygon Amoy to interact with RWA contracts.</p>
+        </div>
+      )}
+      {isConnected && !rwaReady && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
-          <p className="text-sm text-yellow-700">RWA contract not deployed or wrong chain — switch to a supported testnet.</p>
+          <p className="text-sm text-yellow-700">RWA contract not deployed or wrong chain — check <strong>NEXT_PUBLIC_DIGITAL_RWA</strong> and switch to Amoy.</p>
         </div>
       )}
 
@@ -171,7 +124,7 @@ export default function RWA() {
 
       {txHash && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-700 break-all">
-          Tx: <a href={`${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline font-mono">{txHash.slice(0, 20)}...</a>
+          Tx: <a href={`https://amoy.polygonscan.com/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline font-mono">{txHash.slice(0, 20)}...</a>
         </div>
       )}
 
@@ -195,53 +148,16 @@ export default function RWA() {
         </div>
       </div>
 
-      {/* Live Price */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900">Chainlink Price Feed</h3>
-          <button onClick={handleSyncPrice} disabled={busy || !rwaReady} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-xs font-medium rounded-lg transition">
-            {busy ? "..." : "Sync Price"}
-          </button>
-        </div>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Current Price (POL/USD)</span>
-            <span className="font-medium font-mono">{currentPrice ? formatUnits(currentPrice as bigint, 8) : "—"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Last Synced</span>
-            <span className="font-medium">{lastPriceUpdate && Number(lastPriceUpdate) > 0 ? new Date(Number(lastPriceUpdate) * 1000).toLocaleString() : "Never"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Oracle</span>
-            <span className="font-mono text-xs text-gray-600 break-all">{priceFeedAddr || "—"}</span>
-          </div>
-        </div>
-        <p className="text-[10px] text-gray-400 mt-3">Anyone can sync the price from Chainlink. No admin needed.</p>
-      </div>
-
       {/* Subscribe */}
       {rwaReady && whitelisted === true && !isAdmin && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h3 className="font-semibold text-gray-900">Subscribe</h3>
-          <p className="text-xs text-gray-500">Send POL to mint RWA tokens (1 POL = 1 DA1)</p>
+          <p className="text-xs text-gray-500">Send MATIC to mint RWA tokens (1 MATIC = 1 DA1)</p>
           <div className="flex gap-2">
             <input value={subAmount} onChange={e => setSubAmount(e.target.value)} type="number" min="0" placeholder="MATIC amount" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             <button onClick={handleSubscribe} disabled={busy || !rwaReady} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition">
               {busy ? "..." : "Buy DA1"}
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* not whitelisted */}
-      {rwaReady && whitelisted !== true && !isAdmin && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4 text-center">
-          <h3 className="font-semibold text-gray-900">Access Required</h3>
-          <p className="text-sm text-gray-600">RWA is whitelist-gated for regulatory compliance. Hold 1000+ USDC to be automatically whitelisted. Mint USDC from the <strong>Faucet</strong> tab.</p>
-          <div className="bg-gray-50 rounded-lg p-3">
-            <p className="text-xs text-gray-400 mb-1">Your Address</p>
-            <p className="text-sm font-mono text-gray-700 break-all">{address}</p>
           </div>
         </div>
       )}
@@ -260,7 +176,7 @@ export default function RWA() {
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Manage Whitelist <span className="text-red-500 font-medium">(Emergency Only)</span></label>
+            <label className="block text-xs text-gray-500 mb-1">Manage Whitelist</label>
             <div className="flex gap-2">
               <input value={wlAddr} onChange={e => setWlAddr(e.target.value)} placeholder="0x..." className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-xs" />
               <button onClick={() => handleSetWhitelist(true)} disabled={busy || !rwaReady || !wlAddr} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition">
@@ -271,19 +187,12 @@ export default function RWA() {
               </button>
             </div>
           </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Whitelist Token (swap gating token)</label>
-            <div className="flex gap-2">
-              <input value={wlToken} onChange={e => setWlToken(e.target.value)} placeholder="Token address (0x... or 0x0 to disable)" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-xs" />
-              <input value={wlMinBal} onChange={e => setWlMinBal(e.target.value)} type="number" min="0" placeholder="Min balance" className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
-              <button onClick={handleSetWhitelistToken} disabled={busy || !rwaReady || !wlToken} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition">
-                {busy ? "..." : "Set"}
-              </button>
-            </div>
-            <p className="text-[10px] text-gray-400 mt-1">Set to any ERC-20 (tGOV, GOV, USDC...). Set address(0) + minBalance 0 to disable token gating.</p>
-          </div>
         </div>
-      ) : null}
+      ) : rwaReady && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
+          <p className="text-sm text-yellow-700">Admin functions require the contract owner wallet {owner ? `${(owner as string).slice(0, 6)}...${(owner as string).slice(-4)}` : ""}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Shell from "./shell";
+import { useWalletSign } from "../hooks/useWalletSign";
 
 export default function ClientShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+  useWalletSign();
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-emerald-100">

@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useReadContracts, useWriteContract } from "wagmi";
-import { getPublicClient } from 'wagmi/actions';
 import { formatUnits, parseUnits, type Address } from "viem";
 import { useContracts } from "../hooks/useContracts";
-import { config } from "../config/web3";
-import Freelance from "./Freelance";
 
-type Tab = "browse" | "create" | "freelance";
+type Tab = "browse" | "create";
 type PricingMode = "fixed" | "dutch";
 type BuyToken = "native" | "xGOV" | "xNOBT" | "xBRT" | "USDC" | "USDT";
 
@@ -15,30 +12,26 @@ const ERC20_ABI = [
   { inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], name: "approve", outputs: [{ name: "", type: "bool" }], stateMutability: "nonpayable", type: "function" },
 ] as const;
 
-function useTokenAddrs() {
-  const { govTokenAddr, mockXNOBTAddr, mockXBRTAddr, mockUSDCAddr, mockUSDTAddr } = useContracts();
-  return {
-    xGOV: govTokenAddr,
-    xNOBT: mockXNOBTAddr,
-    xBRT: mockXBRTAddr,
-    USDC: mockUSDCAddr,
-    USDT: mockUSDTAddr,
-  } as Record<string, string>;
-}
+const TOKEN_ADDRS: Record<string, string> = {
+  xGOV: process.env.NEXT_PUBLIC_GOV_TOKEN || "",
+  xNOBT: process.env.NEXT_PUBLIC_XNOBT || "",
+  xBRT: process.env.NEXT_PUBLIC_XBRT || "",
+  USDC: process.env.NEXT_PUBLIC_MOCK_USDC || "",
+  USDT: process.env.NEXT_PUBLIC_MOCK_USDT || "",
+};
 
 const DG_ABI = [
   { inputs: [{ name: "listingId", type: "uint256" }], name: "buy", outputs: [], stateMutability: "payable", type: "function" },
   { inputs: [{ name: "listingId", type: "uint256" }, { name: "token", type: "address" }, { name: "amount", type: "uint256" }], name: "buyWithToken", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ name: "listingId", type: "uint256" }], name: "currentPrice", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "listingCount", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "", type: "uint256" }], name: "listings", outputs: [{ name: "id", type: "uint256" }, { name: "seller", type: "address" }, { name: "metadataURI", type: "string" }, { name: "pricing", type: "uint8" }, { name: "price", type: "uint256" }, { name: "status", type: "uint8" }, { name: "buyer", type: "address" }, { name: "escrowedAmount", type: "uint256" }, { name: "createdAt", type: "uint256" }, { name: "disputeDeadline", type: "uint256" }, { name: "deliveryConfirmed", type: "bool" }, { name: "paymentToken", type: "address" }, { name: "category", type: "string" }, { name: "deliveryURI", type: "string" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "", type: "uint256" }], name: "listings", outputs: [{ name: "id", type: "uint256" }, { name: "seller", type: "address" }, { name: "metadataURI", type: "string" }, { name: "pricing", type: "uint8" }, { name: "price", type: "uint256" }, { name: "status", type: "uint8" }, { name: "buyer", type: "address" }, { name: "escrowedAmount", type: "uint256" }, { name: "createdAt", type: "uint256" }, { name: "disputeDeadline", type: "uint256" }, { name: "deliveryConfirmed", type: "bool" }, { name: "paymentToken", type: "address" }, { name: "category", type: "string" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "metadataURI", type: "string" }, { name: "price", type: "uint256" }, { name: "category", type: "string" }, { name: "deliveryURI", type: "string" }], name: "listFixed", outputs: [{ name: "", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ name: "metadataURI", type: "string" }, { name: "startPrice", type: "uint256" }, { name: "reservePrice", type: "uint256" }, { name: "duration", type: "uint256" }, { name: "category", type: "string" }, { name: "deliveryURI", type: "string" }], name: "listDutch", outputs: [{ name: "", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
 ] as const;
 
 export default function Marketplace() {
-  const { isConnected, isCorrectChain, digitalGoodsReady, digitalGoodsAddr, explorer } = useContracts();
-  const TOKEN_ADDRS = useTokenAddrs();
+  const { isConnected, isCorrectChain, digitalGoodsReady, digitalGoodsAddr } = useContracts();
   const { address, connector } = useAccount();
   const { writeContractAsync } = useWriteContract();
 
@@ -50,9 +43,9 @@ export default function Marketplace() {
   const [metaURI, setMetaURI] = useState("ipfs://QmExampleNFT — Unique Digital Artwork");
   const [category, setCategory] = useState("art");
   const [deliveryURI, setDeliveryURI] = useState("");
-  const [fixedPrice, setFixedPrice] = useState("0.00001");
-  const [startPrice, setStartPrice] = useState("0.00002");
-  const [reservePrice, setReservePrice] = useState("0.000005");
+  const [fixedPrice, setFixedPrice] = useState("25");
+  const [startPrice, setStartPrice] = useState("100");
+  const [reservePrice, setReservePrice] = useState("10");
   const [durationHrs, setDurationHrs] = useState("24");
 
   const [buyToken, setBuyToken] = useState<BuyToken>("native");
@@ -109,9 +102,9 @@ export default function Marketplace() {
   }
 
   const EXAMPLE_LISTINGS: Listing[] = [
-    { id: 1n, seller: "0x1234...5678" as Address, metadataURI: "ipfs://QmPizzaNFT — Vintage Pixel Art Slice #01", pricing: 0, price: parseUnits("0.00001", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "art", deliveryURI: "", currentPrice: parseUnits("0.00001", 18) },
-    { id: 2n, seller: "0x8765...4321" as Address, metadataURI: "ipfs://QmDutchNFT — Generative Geometry Collection", pricing: 1, price: parseUnits("0.00005", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "collectibles", deliveryURI: "", currentPrice: parseUnits("0.00003", 18) },
-    { id: 3n, seller: "0xABCD...EF01" as Address, metadataURI: "ipfs://QmMusicNFT — Lo-Fi Beat License", pricing: 0, price: parseUnits("0.000005", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "music", deliveryURI: "", currentPrice: parseUnits("0.000005", 18) },
+    { id: 1n, seller: "0x1234...5678" as Address, metadataURI: "ipfs://QmPizzaNFT — Vintage Pixel Art Slice #01", pricing: 0, price: parseUnits("100", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "art", deliveryURI: "", currentPrice: parseUnits("100", 18) },
+    { id: 2n, seller: "0x8765...4321" as Address, metadataURI: "ipfs://QmDutchNFT — Generative Geometry Collection", pricing: 1, price: parseUnits("500", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "collectibles", deliveryURI: "", currentPrice: parseUnits("320", 18) },
+    { id: 3n, seller: "0xABCD...EF01" as Address, metadataURI: "ipfs://QmMusicNFT — Lo-Fi Beat License", pricing: 0, price: parseUnits("50", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "music", deliveryURI: "", currentPrice: parseUnits("50", 18) },
   ];
 
   // ── Helpers ──
@@ -124,8 +117,6 @@ export default function Marketplace() {
       const hash = pricingMode === "fixed"
         ? await write({ functionName: "listFixed", args: [metaURI, parseUnits(fixedPrice, 18), category, deliveryURI] })
         : await write({ functionName: "listDutch", args: [metaURI, parseUnits(startPrice, 18), parseUnits(reservePrice, 18), BigInt(Number(durationHrs) * 3600), category, deliveryURI] });
-      const publicClient = getPublicClient(config)!;
-      await publicClient.waitForTransactionReceipt({ hash });
       setTxHash(hash);
       setMetaURI(""); setCategory("art"); setDeliveryURI(""); setFixedPrice(""); setStartPrice(""); setReservePrice(""); setDurationHrs("24");
     } catch (e: any) { console.error(e); }
@@ -136,18 +127,15 @@ export default function Marketplace() {
     if (!digitalGoodsReady || busy) return;
     setBusy(true); setTxHash(""); setBuyingId(Number(l.id));
     try {
-      const publicClient = getPublicClient(config)!;
       if (buyToken === "native") {
         const hash = await writeContractAsync({ abi: DG_ABI, address: addr, functionName: "buy", args: [BigInt(l.id)], value: l.currentPrice, connector } as any);
-        await publicClient.waitForTransactionReceipt({ hash });
         setTxHash(hash);
       } else {
         const tokenAddr = TOKEN_ADDRS[buyToken] as Address;
         if (!tokenAddr) throw new Error("Token address not configured");
-        const approveHash = await writeContractAsync({ abi: ERC20_ABI, address: tokenAddr, functionName: "approve", args: [addr, l.currentPrice], connector } as any);
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        const approve = await writeContractAsync({ abi: ERC20_ABI, address: tokenAddr, functionName: "approve", args: [addr, l.currentPrice], connector } as any);
+        await new Promise(r => setTimeout(r, 2000));
         const hash = await writeContractAsync({ abi: DG_ABI, address: addr, functionName: "buyWithToken", args: [BigInt(l.id), tokenAddr, l.currentPrice], connector } as any);
-        await publicClient.waitForTransactionReceipt({ hash });
         setTxHash(hash);
       }
     } catch (e: any) { console.error(e); }
@@ -174,12 +162,6 @@ export default function Marketplace() {
         <div className="max-w-4xl mx-auto px-4">
           <h2 className="text-2xl font-semibold text-gray-900 text-center mb-6">Marketplace</h2>
 
-          {/* walkthrough */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800 leading-relaxed">
-            <strong>Guide:</strong> Browse and buy <strong>digital goods</strong> (fixed or Dutch auction).
-            Use the <strong>Freelance</strong> tab to post gigs or projects with milestone-based escrow.
-          </div>
-
           {!isCorrectChain && !isConnected && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center mb-6">
               <p className="text-sm text-blue-700">Connect wallet and switch to Polygon Amoy to interact with the marketplace.</p>
@@ -187,7 +169,7 @@ export default function Marketplace() {
           )}
           {!isCorrectChain && isConnected && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center mb-6">
-              <p className="text-sm text-red-700">Switch wallet to a supported testnet (Polygon Amoy, Base Sepolia, or Arbitrum Sepolia).</p>
+              <p className="text-sm text-red-700">Switch wallet to Polygon Amoy (chain ID 80002) to interact with testnet marketplace.</p>
             </div>
           )}
           {isCorrectChain && !digitalGoodsReady && (
@@ -199,19 +181,16 @@ export default function Marketplace() {
           {/* Tabs */}
           <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
             <button onClick={() => setTab("browse")} className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === "browse" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-              Digital Goods ({active.length})
+              Browse ({active.length})
             </button>
             <button onClick={() => setTab("create")} className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === "create" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               Create Listing
-            </button>
-            <button onClick={() => setTab("freelance")} className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${tab === "freelance" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-              Freelance
             </button>
           </div>
 
           {txHash && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 text-sm text-emerald-700 break-all">
-              Tx: <a href={`${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline font-mono">{txHash.slice(0, 20)}...</a>
+              Tx: <a href={`https://amoy.polygonscan.com/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline font-mono">{txHash.slice(0, 20)}...</a>
             </div>
           )}
 
@@ -252,7 +231,7 @@ export default function Marketplace() {
                         </div>
                         <p className="text-xs text-gray-500 mb-1">Seller: {l.seller.slice(0, 6)}...{l.seller.slice(-4)}</p>
                         <div className="mt-auto pt-3">
-                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? "MATIC" : buyToken.toUpperCase()}</p>
+                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} MATIC</p>
                           {l.pricing === 1 && (
                             <p className="text-[10px] text-gray-400 mt-0.5">
                               Started {formatUnits(l.price, 18)} · Reserve {formatUnits(l.escrowedAmount || 0n, 18)}
@@ -298,7 +277,7 @@ export default function Marketplace() {
                         </div>
                         <p className="text-xs text-gray-500 mb-1">Seller: {l.seller.slice(0, 6)}...{l.seller.slice(-4)}</p>
                         <div className="mt-auto pt-3">
-                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? "MATIC" : buyToken.toUpperCase()}</p>
+                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} MATIC</p>
                           {l.pricing === 1 && (
                             <p className="text-[10px] text-gray-400 mt-0.5">
                               Started {formatUnits(l.price, 18)} · Reserve {formatUnits(l.escrowedAmount || 0n, 18)}
@@ -393,10 +372,6 @@ export default function Marketplace() {
                 </button>
               </div>
             </div>
-          )}
-
-          {tab === "freelance" && (
-            <Freelance />
           )}
         </div>
       </section>
