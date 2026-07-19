@@ -1,5 +1,6 @@
 export const API_BASE = import.meta.env.VITE_API_URL || "https://reward-api.trestle.website";
 export const VAULT_API_BASE = import.meta.env.VITE_VAULT_API_URL || "https://vault.trestle.website";
+export const AI_API_BASE = import.meta.env.VITE_AI_API_URL || "https://ai.trestle.website";
 
 export const LINKS = {
   mainSite: import.meta.env.VITE_MAIN_SITE_URL || "https://trestle.website",

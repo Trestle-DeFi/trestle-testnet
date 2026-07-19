@@ -13,6 +13,7 @@ interface Window {
         onClick: (cb: () => void) => void;
         setParams: (params: Record<string, string>) => void;
       };
+      initData?: string;
       initDataUnsafe?: {
         user?: {
           id: number;

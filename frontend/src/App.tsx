@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useTelegram } from "./hooks/useTelegram";
+import { useTelegramLink } from "./hooks/useTelegramLink";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Marketplace from "./pages/Marketplace";
@@ -11,6 +12,7 @@ import Withdraw from "./pages/Withdraw";
 
 export default function App() {
   const { ready, expand } = useTelegram();
+  useTelegramLink();
 
   useEffect(() => {
     ready();
@@ -26,7 +28,6 @@ export default function App() {
           <Route path="/stake" element={<Staking />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/tasks" element={<Tasks />} />
-          <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/withdraw" element={<Withdraw />} />
         </Route>
       </Routes>

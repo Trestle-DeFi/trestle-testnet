@@ -24,7 +24,7 @@ const wagmiAdapter = new WagmiAdapter({
     [polygon.id]: fallback(polygonTransports, { rank: true }),
     [polygonAmoy.id]: fallback(amoyTransports, { rank: true }),
   },
-  ...({ autoConnect: false } as any),
+  ssr: true,
 });
 
 export const config = wagmiAdapter.wagmiConfig;
@@ -37,7 +37,7 @@ createAppKit({
     name: "Trestle DeFi",
     description: "Trestle Telegram Mini App",
     url: import.meta.env.VITE_SITE_URL || "https://trestle.website",
-    icons: ["/favicon.ico"],
+    icons: [`${import.meta.env.VITE_SITE_URL || "https://trestle.website"}/favicon.svg`],
   },
   features: {
     email: true,

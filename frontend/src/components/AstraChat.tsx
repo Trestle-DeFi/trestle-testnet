@@ -44,7 +44,7 @@ export default function AstraChat() {
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[200px]">
         {messages.length === 0 && (
-          <p className="text-xs text-gray-400 text-center py-8">Ask Astra about Trestle Protocol, staking, rewards, or disputes.</p>
+          <p className="text-xs text-gray-400 text-center py-8">Ask Astra about Trestle DeFi, staking, rewards, or disputes.</p>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>

@@ -12,7 +12,8 @@ export function useTelegram() {
   const hideMainButton = () => tg?.MainButton.hide();
 
   const user = tg?.initDataUnsafe?.user ?? null;
+  const initData = tg?.initData ?? null;
   const colorScheme = tg?.colorScheme ?? "light";
 
-  return { tg, user, colorScheme, ready, expand, showMainButton, hideMainButton };
+  return { tg, user, initData, colorScheme, ready, expand, showMainButton, hideMainButton };
 }

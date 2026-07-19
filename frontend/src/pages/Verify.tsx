@@ -33,7 +33,11 @@ export default function Verify() {
     if (!address || fetching) return;
     setFetching(true);
     try {
-      const result = await api<{ score: number; fetched: boolean }>(`/api/passport/fetch/${address}`);
+      const result = await api<{ score: number; fetched: boolean; rateLimited?: boolean }>(`/api/passport/fetch/${address}`);
+      if (result.rateLimited) {
+        alert("Gitcoin API rate-limited. Please wait a few seconds and try again.");
+        return;
+      }
       setPassport(prev => prev ? { ...prev, score: result.score, verified: result.fetched } : { score: result.score, threshold: 10, verified: result.fetched });
     } catch (e: any) {
       alert(e.message);
