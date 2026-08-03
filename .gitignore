@@ -3,7 +3,6 @@ node_modules/
 .env.local
 *.log
 .DS_Store
-artifacts/
-cache/
-typechain-types/
 dist/
+.wrangler/
+coverage/

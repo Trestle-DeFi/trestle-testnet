@@ -1,6 +1,12 @@
-export const API_BASE = import.meta.env.VITE_API_URL || "https://reward-api.trestle.website";
-export const VAULT_API_BASE = import.meta.env.VITE_VAULT_API_URL || "https://vault.trestle.website";
-export const AI_API_BASE = import.meta.env.VITE_AI_API_URL || "https://ai.trestle.website";
+export const REWARD_API = import.meta.env.VITE_REWARD_API_URL || "https://reward-api.trestle.website";
+export const TESTNET_API = import.meta.env.VITE_TESTNET_API_URL || "https://vault.trestle.website";
+export const VAULT_API = import.meta.env.VITE_VAULT_API_URL || "https://vault.trestle.website";
+export const AI_API = import.meta.env.VITE_AI_API_URL || "https://ai.trestle.website";
+
+// Legacy aliases
+export const API_BASE = REWARD_API;
+export const AI_API_BASE = AI_API;
+export const VAULT_API_BASE = VAULT_API;
 
 export const LINKS = {
   mainSite: import.meta.env.VITE_MAIN_SITE_URL || "https://trestle.website",
@@ -12,21 +18,43 @@ export const LINKS = {
 } as const;
 
 export const CHAIN_CONFIG = {
-  amoy: {
-    id: 80002,
-    name: "Polygon Amoy",
-    rpc: "https://rpc-amoy.polygon.technology/",
-    explorer: "https://www.oklink.com/amoy",
-    currency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
-  },
   polygon: {
     id: 137,
     name: "Polygon Mainnet",
+    shortName: "Polygon",
     rpc: "https://polygon-rpc.com/",
-    explorer: "https://polygonscan.com/",
-    currency: { name: "MATIC", symbol: "MATIC", decimals: 18 },
+    explorer: "https://polygonscan.com",
+    currency: { name: "POL", symbol: "POL", decimals: 18 },
+  },
+  amoy: {
+    id: 80002,
+    name: "Polygon Amoy",
+    shortName: "Amoy",
+    rpc: "https://rpc-amoy.polygon.technology/",
+    explorer: "https://www.oklink.com/amoy",
+    currency: { name: "POL", symbol: "POL", decimals: 18 },
+  },
+  baseSepolia: {
+    id: 84532,
+    name: "Base Sepolia",
+    shortName: "Base",
+    rpc: "https://sepolia.base.org",
+    explorer: "https://sepolia.basescan.org",
+    currency: { name: "ETH", symbol: "ETH", decimals: 18 },
+  },
+  arbitrumSepolia: {
+    id: 421614,
+    name: "Arbitrum Sepolia",
+    shortName: "Arbitrum",
+    rpc: "https://sepolia-rollup.arbitrum.io/rpc",
+    explorer: "https://sepolia.arbiscan.io",
+    currency: { name: "ETH", symbol: "ETH", decimals: 18 },
   },
 } as const;
+
+export type ChainKey = keyof typeof CHAIN_CONFIG;
+export const SUPPORTED_CHAIN_IDS = Object.values(CHAIN_CONFIG).map(c => c.id) as readonly number[];
+export const DEFAULT_CHAIN = CHAIN_CONFIG.amoy.id;
 
 export const BROILER_INFO = {
   supply: "1,000,000,000,000,000",
