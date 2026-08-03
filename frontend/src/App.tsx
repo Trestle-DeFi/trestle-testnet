@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useTelegram } from "./hooks/useTelegram";
@@ -19,6 +20,18 @@ export default function App() {
     ready();
     expand();
   }, []);
+=======
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import Marketplace from "./pages/Marketplace";
+import RWA from "./pages/RWA";
+import Withdraw from "./pages/Withdraw";
+import { useWalletSign } from "./components/QRCode";
+
+export default function App() {
+  useWalletSign();
+>>>>>>> 7c29aad (initial commit)
 
   return (
     <BrowserRouter>
@@ -26,13 +39,21 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/marketplace" element={<Marketplace />} />
+<<<<<<< HEAD
           <Route path="/stake" element={<Staking />} />
           <Route path="/verify" element={<Verify />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/bounty" element={<Bounty />} />
+=======
+          <Route path="/rwa" element={<RWA />} />
+>>>>>>> 7c29aad (initial commit)
           <Route path="/withdraw" element={<Withdraw />} />
         </Route>
       </Routes>
     </BrowserRouter>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 7c29aad (initial commit)
