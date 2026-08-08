@@ -1,6 +1,13 @@
-import { API_BASE, AI_API_BASE } from "../config/contracts";
+const AI_API = process.env.NEXT_PUBLIC_AI_API_URL || "https://ai.trestle.website";
+const REWARD_API = process.env.NEXT_PUBLIC_REWARD_API_URL || "https://reward-api.trestle.website";
 
 type AstraContext = Record<string, string>;
+
+export interface AgentResponse {
+  content: string;
+  source: string;
+  agent: string;
+}
 
 async function tryDirectAPI(message: string, context?: AstraContext): Promise<string | null> {
   try {
@@ -10,7 +17,7 @@ async function tryDirectAPI(message: string, context?: AstraContext): Promise<st
     const prompt = ctx ? `Context:\n${ctx}\n\nUser: ${message}` : message;
     const system = "You are Astra, the Trestle DeFi AI assistant. You help users with staking, rewards, marketplace, disputes, and platform questions. Be concise and helpful.";
 
-    const r = await fetch(`${AI_API_BASE}/api/ai/ask`, {
+    const r = await fetch(`${AI_API}/api/ai/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ system, user: prompt }),
@@ -25,7 +32,7 @@ async function tryDirectAPI(message: string, context?: AstraContext): Promise<st
 
 async function tryProxyAPI(message: string, context?: AstraContext): Promise<string | null> {
   try {
-    const r = await fetch(`${API_BASE}/api/astra/chat`, {
+    const r = await fetch(`${REWARD_API}/api/astra/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, context }),
@@ -43,8 +50,22 @@ export async function astraChat(message: string, context?: AstraContext): Promis
   return result || "Astra is offline. Check ASTRA_API_URL.";
 }
 
+export async function astraAsk(system: string, user: string): Promise<string> {
+  const r = await fetch(`${AI_API}/api/ai/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ system, user }),
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({ error: r.statusText }));
+    throw new Error(e.error || r.statusText);
+  }
+  const data = await r.json();
+  return data.content;
+}
+
 export async function analyzeListing(title: string, description: string, price: string) {
-  return fetch(`${API_BASE}/api/astra/marketplace/analyze`, {
+  return fetch(`${REWARD_API}/api/astra/marketplace/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, description, price }),
@@ -52,7 +73,7 @@ export async function analyzeListing(title: string, description: string, price: 
 }
 
 export async function resolveDispute(data: any) {
-  return fetch(`${API_BASE}/api/astra/dispute/resolve`, {
+  return fetch(`${REWARD_API}/api/astra/dispute/resolve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -60,7 +81,7 @@ export async function resolveDispute(data: any) {
 }
 
 export async function getTaskRecommendations(userData: any) {
-  return fetch(`${API_BASE}/api/astra/rewards/recommend`, {
+  return fetch(`${REWARD_API}/api/astra/rewards/recommend`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(userData),
@@ -68,5 +89,5 @@ export async function getTaskRecommendations(userData: any) {
 }
 
 export async function getAstraProviders() {
-  return fetch(`${API_BASE}/api/astra/providers`);
+  return fetch(`${REWARD_API}/api/astra/providers`);
 }
