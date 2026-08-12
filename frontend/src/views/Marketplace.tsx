@@ -37,7 +37,7 @@ const DG_ABI = [
 ] as const;
 
 export default function Marketplace() {
-  const { isConnected, isCorrectChain, digitalGoodsReady, digitalGoodsAddr, explorer } = useContracts();
+  const { isConnected, isCorrectChain, digitalGoodsReady, digitalGoodsAddr, explorer, chainCurrency } = useContracts();
   const TOKEN_ADDRS = useTokenAddrs();
   const { address, connector } = useAccount();
   const { writeContractAsync } = useWriteContract();
@@ -252,7 +252,7 @@ export default function Marketplace() {
                         </div>
                         <p className="text-xs text-gray-500 mb-1">Seller: {l.seller.slice(0, 6)}...{l.seller.slice(-4)}</p>
                         <div className="mt-auto pt-3">
-                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? "MATIC" : buyToken.toUpperCase()}</p>
+                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? chainCurrency : buyToken.toUpperCase()}</p>
                           {l.pricing === 1 && (
                             <p className="text-[10px] text-gray-400 mt-0.5">
                               Started {formatUnits(l.price, 18)} · Reserve {formatUnits(l.escrowedAmount || 0n, 18)}
@@ -261,7 +261,7 @@ export default function Marketplace() {
                         </div>
                         <div className="mt-3 space-y-2">
                           <select value={buyToken} onChange={e => setBuyToken(e.target.value as BuyToken)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50">
-                            <option value="native">MATIC</option>
+                            <option value="native">{chainCurrency}</option>
                             <option value="xGOV">xGOV</option>
                             <option value="xNOBT">xNOBT</option>
                             <option value="xBRT">xBRT</option>
@@ -269,7 +269,7 @@ export default function Marketplace() {
                             <option value="USDT">USDT</option>
                           </select>
                           <button onClick={() => handleBuy(l)} disabled={busy} className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition">
-                            {isBuyingThis ? "Processing..." : `Buy${buyToken === "native" ? " with MATIC" : " with " + buyToken.toUpperCase()}`}
+                            {isBuyingThis ? "Processing..." : `Buy${buyToken === "native" ? ` with ${chainCurrency}` : " with " + buyToken.toUpperCase()}`}
                           </button>
                         </div>
                       </div>
@@ -298,7 +298,7 @@ export default function Marketplace() {
                         </div>
                         <p className="text-xs text-gray-500 mb-1">Seller: {l.seller.slice(0, 6)}...{l.seller.slice(-4)}</p>
                         <div className="mt-auto pt-3">
-                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? "MATIC" : buyToken.toUpperCase()}</p>
+                          <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? chainCurrency : buyToken.toUpperCase()}</p>
                           {l.pricing === 1 && (
                             <p className="text-[10px] text-gray-400 mt-0.5">
                               Started {formatUnits(l.price, 18)} · Reserve {formatUnits(l.escrowedAmount || 0n, 18)}
@@ -307,7 +307,7 @@ export default function Marketplace() {
                         </div>
                         <div className="mt-3 space-y-2">
                           <select value={buyToken} onChange={e => setBuyToken(e.target.value as BuyToken)} className="w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-gray-50">
-                            <option value="native">MATIC</option>
+                            <option value="native">{chainCurrency}</option>
                             <option value="xGOV">xGOV</option>
                             <option value="xNOBT">xNOBT</option>
                             <option value="xBRT">xBRT</option>
@@ -315,7 +315,7 @@ export default function Marketplace() {
                             <option value="USDT">USDT</option>
                           </select>
                           <button onClick={() => handleBuy(l)} disabled={busy} className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition">
-                            {isBuyingThis ? "Processing..." : `Buy${buyToken === "native" ? " with MATIC" : " with " + buyToken.toUpperCase()}`}
+                            {isBuyingThis ? "Processing..." : `Buy${buyToken === "native" ? ` with ${chainCurrency}` : " with " + buyToken.toUpperCase()}`}
                           </button>
                         </div>
                       </div>
@@ -363,7 +363,7 @@ export default function Marketplace() {
 
                 {pricingMode === "fixed" ? (
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Price (MATIC)</label>
+                    <label className="block text-xs text-gray-500 mb-1">Price ({chainCurrency})</label>
                     <input value={fixedPrice} onChange={e => setFixedPrice(e.target.value)} type="number" step="0.001" min="0" placeholder="0.0" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                   </div>
                 ) : (
@@ -383,7 +383,7 @@ export default function Marketplace() {
                       <input value={durationHrs} onChange={e => setDurationHrs(e.target.value)} type="number" min="1" placeholder="24" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                     </div>
                     {startPrice && reservePrice && (
-                      <p className="text-xs text-gray-400">Price decays from {startPrice} → {reservePrice} MATIC over {durationHrs}h</p>
+                      <p className="text-xs text-gray-400">Price decays from {startPrice} → {reservePrice} {chainCurrency} over {durationHrs}h</p>
                     )}
                   </>
                 )}

@@ -29,7 +29,7 @@ function parseAssetInfo(raw: unknown): typeof EXAMPLE_INFO | undefined {
 }
 
 export default function RWA() {
-  const { address, isConnected, rwaReady, rwaAddr, rwaABI, explorer, setWhitelistToken } = useContracts();
+  const { address, isConnected, rwaReady, rwaAddr, rwaABI, explorer, setWhitelistToken, chainCurrency } = useContracts();
   const { connector } = useAccount();
   const { writeContractAsync } = useWriteContract();
 
@@ -190,7 +190,7 @@ export default function RWA() {
             <div className="flex justify-between"><span className="text-gray-500">Redemption Date</span><span className="font-medium">{new Date(Number(info.redemptionDate) * 1000).toLocaleDateString()}</span></div>
           )}
           {Number(info.redemptionPrice) > 0 && (
-            <div className="flex justify-between"><span className="text-gray-500">Redemption Price</span><span className="font-medium">{formatUnits(info.redemptionPrice, 18)} MATIC</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">Redemption Price</span><span className="font-medium">{formatUnits(info.redemptionPrice, 18)} {chainCurrency}</span></div>
           )}
         </div>
       </div>
@@ -226,7 +226,7 @@ export default function RWA() {
           <h3 className="font-semibold text-gray-900">Subscribe</h3>
           <p className="text-xs text-gray-500">Send POL to mint RWA tokens (1 POL = 1 DA1)</p>
           <div className="flex gap-2">
-            <input value={subAmount} onChange={e => setSubAmount(e.target.value)} type="number" min="0" placeholder="MATIC amount" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <input value={subAmount} onChange={e => setSubAmount(e.target.value)} type="number" min="0" placeholder={`${chainCurrency} amount`} className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             <button onClick={handleSubscribe} disabled={busy || !rwaReady} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition">
               {busy ? "..." : "Buy DA1"}
             </button>

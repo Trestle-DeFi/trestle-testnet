@@ -74,7 +74,7 @@ export function useContracts() {
   const isCorrectChain = chainKey !== null;
   const chainName = chainKey ? CHAIN_CONFIG[chainKey].name : "Unsupported";
   const chainCurrency = chainKey ? CHAIN_CONFIG[chainKey].currency.symbol : "ETH";
-  const explorer = chainKey ? CHAIN_CONFIG[chainKey].blockscout : "";
+  const explorer = chainKey ? CHAIN_CONFIG[chainKey].explorer : "";
 
   const addrs = chainKey ? CONTRACT_ADDRESSES[CHAIN_CONFIG[chainKey].id] : null;
 

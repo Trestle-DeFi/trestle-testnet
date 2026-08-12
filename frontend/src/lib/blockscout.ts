@@ -9,6 +9,13 @@ export function getBlockscoutUrl(chainId: number): string {
   return "https://amoy.blockscout.com";
 }
 
+export function getExplorerUrl(chainId: number): string {
+  for (const config of Object.values(CHAIN_CONFIG)) {
+    if (config.id === chainId) return config.explorer;
+  }
+  return "https://amoy.polygonscan.com";
+}
+
 async function api(chainId: number, path: string) {
   const baseUrl = getBlockscoutUrl(chainId);
   try {
@@ -65,11 +72,11 @@ export async function getAddressInfo(address: string, chainId = 80002): Promise<
 }
 
 export function explorerTxUrl(chainId: number, hash: string) {
-  return `${getBlockscoutUrl(chainId)}/tx/${hash}`;
+  return `${getExplorerUrl(chainId)}/tx/${hash}`;
 }
 
 export function explorerAddressUrl(chainId: number, address: string) {
-  return `${getBlockscoutUrl(chainId)}/address/${address}`;
+  return `${getExplorerUrl(chainId)}/address/${address}`;
 }
 
 export function rpcUrl(chainId: number) {

@@ -7,7 +7,7 @@ import { useContracts } from "../hooks/useContracts";
 type Tab = "browse" | "create-gig" | "create-project";
 
 export default function Freelance() {
-  const { address, isConnected, freelancerEscrowReady, freelancerEscrowAddr, freelancerEscrowABI, explorer } = useContracts();
+  const { address, isConnected, freelancerEscrowReady, freelancerEscrowAddr, freelancerEscrowABI, explorer, chainCurrency } = useContracts();
   const { connector } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const addr = freelancerEscrowAddr as Address;
@@ -175,7 +175,7 @@ export default function Freelance() {
                   <div key={g.id.toString()} className="border border-gray-100 rounded-lg p-3 text-sm">
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-medium text-gray-900">{g.title}</span>
-                      <span className="text-emerald-600 font-semibold">{formatUnits(g.price, 18)} MATIC</span>
+                      <span className="text-emerald-600 font-semibold">{formatUnits(g.price, 18)} {chainCurrency}</span>
                     </div>
                     <p className="text-xs text-gray-400 mb-2">By {g.freelancer.slice(0, 6)}...{g.freelancer.slice(-4)}</p>
                     <button onClick={() => handleHire(g.id, g.price)} disabled={busy || isOwner(g.freelancer)}
@@ -199,10 +199,10 @@ export default function Freelance() {
                   <div key={p.id.toString()} className="border border-gray-100 rounded-lg p-3 text-sm">
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-medium text-gray-900">{p.title}</span>
-                      <span className="text-blue-600 font-semibold">{formatUnits(p.totalBudget, 18)} MATIC</span>
+                      <span className="text-blue-600 font-semibold">{formatUnits(p.totalBudget, 18)} {chainCurrency}</span>
                     </div>
                     <p className="text-xs text-gray-400 mb-2">Client: {p.client.slice(0, 6)}...{p.client.slice(-4)}</p>
-                    <p className="text-xs text-gray-400">Status: {STATUS[p.status] || "Unknown"} · Escrowed: {formatUnits(p.escrowed, 18)} MATIC</p>
+                    <p className="text-xs text-gray-400">Status: {STATUS[p.status] || "Unknown"} · Escrowed: {formatUnits(p.escrowed, 18)} {chainCurrency}</p>
                   </div>
                 ))}
               </div>
@@ -217,7 +217,7 @@ export default function Freelance() {
           <p className="text-xs text-gray-500">List your service with milestone-based payments.</p>
           {[{ label: "Title", val: gigTitle, set: setGigTitle },
             { label: "Description URI (ipfs://...)", val: gigDesc, set: setGigDesc },
-            { label: "Price (MATIC)", val: gigPrice, set: setGigPrice, type: "number" },
+            { label: `Price (${chainCurrency})`, val: gigPrice, set: setGigPrice, type: "number" },
             { label: "Milestone Descriptions (comma-sep)", val: gigMsDesc, set: setGigMsDesc },
             { label: "Milestone Amounts (comma-sep)", val: gigMsAmt, set: setGigMsAmt },
             { label: "Milestone Deadlines (days, comma-sep)", val: gigMsDur, set: setGigMsDur },
@@ -241,7 +241,7 @@ export default function Freelance() {
           <p className="text-xs text-gray-500">Post a fixed-budget project with milestones for freelancers to apply.</p>
           {[{ label: "Title", val: projTitle, set: setProjTitle },
             { label: "Description URI (ipfs://...)", val: projDesc, set: setProjDesc },
-            { label: "Total Budget (MATIC)", val: projBudget, set: setProjBudget, type: "number" },
+            { label: `Total Budget (${chainCurrency})`, val: projBudget, set: setProjBudget, type: "number" },
             { label: "Milestone Descriptions (comma-sep)", val: projMsDesc, set: setProjMsDesc },
             { label: "Milestone Amounts (comma-sep)", val: projMsAmt, set: setProjMsAmt },
             { label: "Milestone Deadlines (days, comma-sep)", val: projMsDur, set: setProjMsDur },
