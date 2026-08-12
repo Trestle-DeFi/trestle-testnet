@@ -96,13 +96,17 @@ export default function Marketplace() {
       const r = listingsRaw[i]?.result as any;
       const p = pricesRaw[i]?.result as bigint | undefined;
       if (!r) return null;
-      const l: any = Array.isArray(r) ? {
-        id: r[0], seller: r[1], metadataURI: r[2], pricing: Number(r[3]),
-        price: r[4], auction: r[5], status: Number(r[6]), buyer: r[7],
+      const raw = (r.seller !== undefined) ? r : {
+        id: r[0], seller: r[1], metadataURI: r[2], pricing: r[3],
+        price: r[4], auction: r[5], status: r[6], buyer: r[7],
         escrowedAmount: r[8], createdAt: r[9], disputeDeadline: r[10],
         deliveryConfirmed: r[11], paymentToken: r[12], category: r[13], deliveryURI: r[14],
-      } : r;
-      return { ...l, currentPrice: p ?? l.price };
+      };
+      const l: any = { ...raw };
+      l.pricing = Number(l.pricing);
+      l.status = Number(l.status);
+      l.currentPrice = p ?? l.price;
+      return l;
     }).filter(Boolean) as Listing[];
   }, [listingsRaw, pricesRaw, listingIds]);
 
