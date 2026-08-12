@@ -1,16 +1,22 @@
 {
+  "../node_modules/@base-org/account/dist/interface/public-utilities/prolink/utils/compression.js -> brotli-wasm": {
+    "id": 82438,
+    "files": [
+      "static/chunks/2438.6ace3a2588b403df.js"
+    ]
+  },
   "../node_modules/@reown/appkit-adapter-wagmi/dist/esm/src/utils/helpers.js -> @wagmi/connectors": {
     "id": 6560,
     "files": [
-      "static/chunks/6560.ad792b25724c5038.js"
+      "static/chunks/6560.4909725871b6f911.js"
     ]
   },
   "../node_modules/@reown/appkit-controllers/dist/esm/src/utils/ViemUtil.js -> viem": {
     "id": 44209,
     "files": [
-      "static/chunks/837.02cbbd1850db88e5.js",
-      "static/chunks/5032.303aaf76098b89ae.js",
-      "static/chunks/4209.8d2b1114ec638319.js"
+      "static/chunks/8741.7d17c869bbf7a95b.js",
+      "static/chunks/933.c2e302938ca522bd.js",
+      "static/chunks/4209.a547050c7eab532f.js"
     ]
   },
   "../node_modules/@reown/appkit-ui/dist/esm/src/components/wui-icon/index.js -> @phosphor-icons/webcomponents/PhArrowCircleDown": {
@@ -463,12 +469,22 @@
       "static/chunks/139.e9b5cf754c258e29.js"
     ]
   },
-  "../node_modules/@wagmi/connectors/dist/esm/coinbaseWallet.js -> @coinbase/wallet-sdk": {
-    "id": 58841,
+  "../node_modules/@wagmi/connectors/dist/esm/baseAccount.js -> @base-org/account": {
+    "id": 80473,
     "files": [
-      "static/chunks/837.02cbbd1850db88e5.js",
-      "static/chunks/5032.303aaf76098b89ae.js",
-      "static/chunks/8841.4f1cdc07e8b4a811.js"
+      "static/chunks/8741.7d17c869bbf7a95b.js",
+      "static/chunks/933.c2e302938ca522bd.js",
+      "static/chunks/5098.be1288b4cd80f5bf.js",
+      "static/chunks/473.e93ed9b1db271727.js"
+    ]
+  },
+  "../node_modules/@wagmi/connectors/dist/esm/coinbaseWallet.js -> @coinbase/wallet-sdk": {
+    "id": 60556,
+    "files": [
+      "static/chunks/8741.7d17c869bbf7a95b.js",
+      "static/chunks/933.c2e302938ca522bd.js",
+      "static/chunks/5098.be1288b4cd80f5bf.js",
+      "static/chunks/556.cba3263c9f1f9cb2.js"
     ]
   },
   "../node_modules/@wagmi/connectors/dist/esm/porto.js -> porto": {
@@ -483,7 +499,7 @@
     "id": 15912,
     "files": [
       "static/chunks/7607.b93ea442fe4f0964.js",
-      "static/chunks/5912.cf45d54f28c5a4bb.js"
+      "static/chunks/5912.bf244e8077227a80.js"
     ]
   },
   "../node_modules/@wagmi/connectors/dist/esm/safe.js -> @safe-global/safe-apps-sdk": {
@@ -740,9 +756,9 @@
     "files": []
   },
   "../node_modules/viem/_esm/utils/signature/recoverPublicKey.js -> @noble/curves/secp256k1": {
-    "id": 20837,
+    "id": 18741,
     "files": [
-      "static/chunks/837.02cbbd1850db88e5.js"
+      "static/chunks/8741.7d17c869bbf7a95b.js"
     ]
   },
   "../node_modules/viem/node_modules/ox/_esm/tempo/internal/virtualMasterPool.js -> ./mine.wasm.js": {
@@ -752,48 +768,48 @@
   "app/faucet/page.tsx -> @/views/Faucet": {
     "id": 23367,
     "files": [
-      "static/chunks/198-48d1f127ffd7562e.js",
-      "static/chunks/837.02cbbd1850db88e5.js",
-      "static/chunks/9123-288ddef562b47d93.js",
-      "static/chunks/5032.303aaf76098b89ae.js",
-      "static/chunks/5363-6b03f3792694d2cd.js",
-      "static/chunks/3367.3418ad2b83e3edec.js"
+      "static/chunks/198-921713b0ecfd6303.js",
+      "static/chunks/8741.7d17c869bbf7a95b.js",
+      "static/chunks/933.c2e302938ca522bd.js",
+      "static/chunks/4197-9a699ed4518203d6.js",
+      "static/chunks/5363-6acb64e21e62b1a4.js",
+      "static/chunks/3367.c017603f3b4aea9e.js"
     ]
   },
   "app/marketplace/page.tsx -> @/views/Marketplace": {
     "id": 74141,
     "files": [
-      "static/chunks/198-48d1f127ffd7562e.js",
-      "static/chunks/837.02cbbd1850db88e5.js",
-      "static/chunks/9123-288ddef562b47d93.js",
-      "static/chunks/5032.303aaf76098b89ae.js",
-      "static/chunks/5363-6b03f3792694d2cd.js",
-      "static/chunks/4141.3990619d78e28776.js"
+      "static/chunks/198-921713b0ecfd6303.js",
+      "static/chunks/8741.7d17c869bbf7a95b.js",
+      "static/chunks/933.c2e302938ca522bd.js",
+      "static/chunks/4197-9a699ed4518203d6.js",
+      "static/chunks/5363-6acb64e21e62b1a4.js",
+      "static/chunks/4141.9bcf852bbbe2f6fd.js"
     ]
   },
   "app/page.tsx -> @/views/Dashboard": {
     "id": 83552,
     "files": [
-      "static/chunks/198-48d1f127ffd7562e.js",
-      "static/chunks/9123-288ddef562b47d93.js",
-      "static/chunks/5363-6b03f3792694d2cd.js",
-      "static/chunks/3552.24cbad561c205fd6.js"
+      "static/chunks/198-921713b0ecfd6303.js",
+      "static/chunks/4197-9a699ed4518203d6.js",
+      "static/chunks/5363-6acb64e21e62b1a4.js",
+      "static/chunks/3552.826bce14089c013b.js"
     ]
   },
   "app/profile/page.tsx -> @/views/UserProfile": {
     "id": 90653,
     "files": [
-      "static/chunks/198-48d1f127ffd7562e.js",
-      "static/chunks/5363-6b03f3792694d2cd.js",
+      "static/chunks/198-921713b0ecfd6303.js",
+      "static/chunks/5363-6acb64e21e62b1a4.js",
       "static/chunks/653.a6b8473adcdf4239.js"
     ]
   },
   "app/rwa/page.tsx -> @/views/RWA": {
     "id": 28912,
     "files": [
-      "static/chunks/198-48d1f127ffd7562e.js",
-      "static/chunks/5363-6b03f3792694d2cd.js",
-      "static/chunks/8912.6af10fa3f1de0e4b.js"
+      "static/chunks/198-921713b0ecfd6303.js",
+      "static/chunks/5363-6acb64e21e62b1a4.js",
+      "static/chunks/8912.ecfd60207fb26da7.js"
     ]
   }
 }

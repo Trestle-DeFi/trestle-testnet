@@ -104,7 +104,7 @@
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/media/joop/J/trestle-git/trestle-build-dirs/testnet-trestle-website/frontend",
+    "outputFileTracingRoot": "/media/joop/J/gh-org/trestle-testnet/frontend",
     "experimental": {
       "useSkewCookie": false,
       "cacheLife": {
@@ -294,10 +294,10 @@
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "/media/joop/J/trestle-git/trestle-build-dirs/testnet-trestle-website/frontend"
+      "root": "/media/joop/J/gh-org/trestle-testnet/frontend"
     }
   },
-  "appDir": "/media/joop/J/trestle-git/trestle-build-dirs/testnet-trestle-website/frontend",
+  "appDir": "/media/joop/J/gh-org/trestle-testnet/frontend",
   "relativeAppDir": "",
   "files": [
     ".next/routes-manifest.json",
