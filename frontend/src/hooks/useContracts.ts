@@ -91,7 +91,7 @@ export function useContracts() {
 
   const { writeContractAsync } = useWriteContract();
   const write = (payload: Parameters<typeof writeContractAsync>[0]) =>
-    writeContractAsync({ ...payload, connector } as any);
+    writeContractAsync({ ...payload, chainId, connector } as any);
 
   return {
     address,

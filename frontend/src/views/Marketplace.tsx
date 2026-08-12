@@ -115,7 +115,8 @@ export default function Marketplace() {
   ];
 
   // ── Helpers ──
-  const write = (args: any) => writeContractAsync({ ...args, abi: DG_ABI, address: addr, connector } as any);
+  const { chainId } = useAccount();
+  const write = (args: any) => writeContractAsync({ ...args, abi: DG_ABI, address: addr, chainId, connector } as any);
 
   async function handleCreate() {
     if (!digitalGoodsReady || busy) return;
