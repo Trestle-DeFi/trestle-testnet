@@ -2,7 +2,7 @@
   "/_not-found/page": "/_not-found",
   "/faucet/page": "/faucet",
   "/marketplace/page": "/marketplace",
-  "/page": "/",
   "/profile/page": "/profile",
-  "/rwa/page": "/rwa"
+  "/rwa/page": "/rwa",
+  "/page": "/"
 }

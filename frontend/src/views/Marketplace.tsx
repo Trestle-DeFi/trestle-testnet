@@ -62,25 +62,19 @@ export default function Marketplace() {
   const addr = digitalGoodsAddr as Address;
 
   // ── Read listing count ──
-  const { data: countData, refetch: refetchCount, error: countError } = useReadContracts({
+  const { data: countData, refetch: refetchCount } = useReadContracts({
     contracts: [{ abi: DG_ABI, address: addr, functionName: "listingCount", args: [] }],
     query: { enabled: digitalGoodsReady },
   } as any);
   const listingCount = countData?.[0]?.result ? Number(countData[0].result) : 0;
-  if (countError) console.error("[Marketplace] listingCount error:", countError);
-  if (countData?.[0]) console.log("[Marketplace] listingCount result:", countData[0].status, countData[0].result?.toString(), "digitalGoodsReady:", digitalGoodsReady, "addr:", addr);
   const listingIds = useMemo(() => Array.from({ length: listingCount }, (_, i) => i + 1), [listingCount]);
 
   // ── Read all listings + current prices in batch ──
   const listingCalls = useMemo(() => listingIds.map(id => ({ abi: DG_ABI, address: addr, functionName: "listings", args: [BigInt(id)] })), [listingIds, addr]);
   const priceCalls = useMemo(() => listingIds.map(id => ({ abi: DG_ABI, address: addr, functionName: "currentPrice", args: [BigInt(id)] })), [listingIds, addr]);
 
-  const { data: listingsRaw, refetch: refetchListings, error: listingsError } = useReadContracts({ contracts: listingCalls as any, query: { enabled: listingCount > 0 } } as any);
-  const { data: pricesRaw, refetch: refetchPrices, error: pricesError } = useReadContracts({ contracts: priceCalls as any, query: { enabled: listingCount > 0 } } as any);
-  if (listingsError) console.error("[Marketplace] listings error:", listingsError);
-  if (pricesError) console.error("[Marketplace] prices error:", pricesError);
-  if (listingsRaw?.[0]) console.log("[Marketplace] listings[0]:", JSON.stringify(listingsRaw[0], (_, v) => typeof v === "bigint" ? v.toString() + "n" : v));
-  if (pricesRaw?.[0]) console.log("[Marketplace] prices[0]:", pricesRaw[0].status, pricesRaw[0].result?.toString());
+  const { data: listingsRaw, refetch: refetchListings } = useReadContracts({ contracts: listingCalls as any, query: { enabled: listingCount > 0 } } as any);
+  const { data: pricesRaw, refetch: refetchPrices } = useReadContracts({ contracts: priceCalls as any, query: { enabled: listingCount > 0 } } as any);
 
   interface Listing {
     id: bigint; seller: Address; metadataURI: string; pricing: number;
@@ -96,22 +90,29 @@ export default function Marketplace() {
       const r = listingsRaw[i]?.result as any;
       const p = pricesRaw[i]?.result as bigint | undefined;
       if (!r) return null;
-      const raw = (r.seller !== undefined) ? r : {
-        id: r[0], seller: r[1], metadataURI: r[2], pricing: r[3],
-        price: r[4], auction: r[5], status: r[6], buyer: r[7],
-        escrowedAmount: r[8], createdAt: r[9], disputeDeadline: r[10],
-        deliveryConfirmed: r[11], paymentToken: r[12], category: r[13], deliveryURI: r[14],
+      const raw = Array.isArray(r)
+        ? { id: r[0], seller: r[1], metadataURI: r[2], pricing: r[3], price: r[4], auction: r[5], status: r[6], buyer: r[7], escrowedAmount: r[8], createdAt: r[9], disputeDeadline: r[10], deliveryConfirmed: r[11], paymentToken: r[12], category: r[13], deliveryURI: r[14] }
+        : r;
+      return {
+        id: raw.id,
+        seller: raw.seller as Address,
+        metadataURI: String(raw.metadataURI),
+        pricing: Number(raw.pricing),
+        price: BigInt(raw.price),
+        auction: raw.auction,
+        status: Number(raw.status),
+        buyer: raw.buyer as Address,
+        escrowedAmount: BigInt(raw.escrowedAmount),
+        createdAt: BigInt(raw.createdAt),
+        disputeDeadline: BigInt(raw.disputeDeadline),
+        deliveryConfirmed: Boolean(raw.deliveryConfirmed),
+        paymentToken: raw.paymentToken as Address,
+        category: String(raw.category),
+        deliveryURI: String(raw.deliveryURI),
+        currentPrice: p ?? BigInt(raw.price),
       };
-      const l: any = { ...raw };
-      l.pricing = Number(l.pricing);
-      l.status = Number(l.status);
-      l.currentPrice = p ?? l.price;
-      return l;
     }).filter(Boolean) as Listing[];
   }, [listingsRaw, pricesRaw, listingIds]);
-
-  if (listings.length > 0) console.log("[Marketplace] parsed listings:", listings.length, "active:", listings.filter(l => l.status === 0).length);
-  else if (listingCount > 0 && listingsRaw) console.log("[Marketplace] listingsRaw type:", typeof listingsRaw, "length:", listingsRaw?.length, "first:", JSON.stringify(listingsRaw?.[0], (_, v) => typeof v === "bigint" ? v.toString() + "n" : v));
 
           const active = useMemo(() => {
     let filtered = listings.filter(l => l.status === 0);
