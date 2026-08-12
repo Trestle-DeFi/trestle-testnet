@@ -113,7 +113,7 @@ export default function Freelance() {
     return projIds.map((id, i) => {
       const r = projsRaw[i]?.result as any;
       if (!r) return null;
-      return { id: BigInt(id), client: r[0] as Address, freelancer: r[1] as Address, status: Number(r[2]), totalBudget: r[3] as bigint, escrowed: r[4] as bigint, title: r[6] as string, desc: r[7] as string };
+      return { id: BigInt(id), client: r.client as Address, freelancer: r.freelancer as Address, status: Number(r.status), totalBudget: r.totalBudget as bigint, escrowed: r.escrowedAmount as bigint, title: r.title as string, desc: r.descriptionURI as string };
     }).filter((p): p is NonNullable<typeof p> => p != null);
   }, [projsRaw, projIds]);
 

@@ -31,7 +31,7 @@ const DG_ABI = [
   { inputs: [{ name: "listingId", type: "uint256" }, { name: "token", type: "address" }, { name: "amount", type: "uint256" }], name: "buyWithToken", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ name: "listingId", type: "uint256" }], name: "currentPrice", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "listingCount", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "", type: "uint256" }], name: "listings", outputs: [{ name: "id", type: "uint256" }, { name: "seller", type: "address" }, { name: "metadataURI", type: "string" }, { name: "pricing", type: "uint8" }, { name: "price", type: "uint256" }, { name: "auctionStartPrice", type: "uint256" }, { name: "auctionReservePrice", type: "uint256" }, { name: "auctionDuration", type: "uint256" }, { name: "auctionStartedAt", type: "uint256" }, { name: "status", type: "uint8" }, { name: "buyer", type: "address" }, { name: "escrowedAmount", type: "uint256" }, { name: "createdAt", type: "uint256" }, { name: "disputeDeadline", type: "uint256" }, { name: "deliveryConfirmed", type: "bool" }, { name: "paymentToken", type: "address" }, { name: "category", type: "string" }, { name: "deliveryURI", type: "string" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "", type: "uint256" }], name: "listings", outputs: [{ name: "id", type: "uint256" }, { name: "seller", type: "address" }, { name: "metadataURI", type: "string" }, { name: "pricing", type: "uint8" }, { name: "price", type: "uint256" }, { name: "auction", type: "tuple", components: [{ name: "startPrice", type: "uint256" }, { name: "reservePrice", type: "uint256" }, { name: "duration", type: "uint256" }, { name: "startedAt", type: "uint256" }] }, { name: "status", type: "uint8" }, { name: "buyer", type: "address" }, { name: "escrowedAmount", type: "uint256" }, { name: "createdAt", type: "uint256" }, { name: "disputeDeadline", type: "uint256" }, { name: "deliveryConfirmed", type: "bool" }, { name: "paymentToken", type: "address" }, { name: "category", type: "string" }, { name: "deliveryURI", type: "string" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "metadataURI", type: "string" }, { name: "price", type: "uint256" }, { name: "category", type: "string" }, { name: "deliveryURI", type: "string" }], name: "listFixed", outputs: [{ name: "", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ name: "metadataURI", type: "string" }, { name: "startPrice", type: "uint256" }, { name: "reservePrice", type: "uint256" }, { name: "duration", type: "uint256" }, { name: "category", type: "string" }, { name: "deliveryURI", type: "string" }], name: "listDutch", outputs: [{ name: "", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
 ] as const;
@@ -78,7 +78,8 @@ export default function Marketplace() {
 
   interface Listing {
     id: bigint; seller: Address; metadataURI: string; pricing: number;
-    price: bigint; status: number; buyer: Address; escrowedAmount: bigint;
+    price: bigint; auction: { startPrice: bigint; reservePrice: bigint; duration: bigint; startedAt: bigint };
+    status: number; buyer: Address; escrowedAmount: bigint;
     createdAt: bigint; disputeDeadline: bigint; deliveryConfirmed: boolean;
     category: string; deliveryURI: string; currentPrice: bigint;
   }
@@ -109,9 +110,9 @@ export default function Marketplace() {
   }
 
   const EXAMPLE_LISTINGS: Listing[] = [
-    { id: 1n, seller: "0x1234...5678" as Address, metadataURI: "ipfs://QmPizzaNFT — Vintage Pixel Art Slice #01", pricing: 0, price: parseUnits("0.00001", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "art", deliveryURI: "", currentPrice: parseUnits("0.00001", 18) },
-    { id: 2n, seller: "0x8765...4321" as Address, metadataURI: "ipfs://QmDutchNFT — Generative Geometry Collection", pricing: 1, price: parseUnits("0.00005", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "collectibles", deliveryURI: "", currentPrice: parseUnits("0.00003", 18) },
-    { id: 3n, seller: "0xABCD...EF01" as Address, metadataURI: "ipfs://QmMusicNFT — Lo-Fi Beat License", pricing: 0, price: parseUnits("0.000005", 18), status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "music", deliveryURI: "", currentPrice: parseUnits("0.000005", 18) },
+    { id: 1n, seller: "0x1234...5678" as Address, metadataURI: "ipfs://QmPizzaNFT — Vintage Pixel Art Slice #01", pricing: 0, price: parseUnits("0.00001", 18), auction: { startPrice: 0n, reservePrice: 0n, duration: 0n, startedAt: 0n }, status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "art", deliveryURI: "", currentPrice: parseUnits("0.00001", 18) },
+    { id: 2n, seller: "0x8765...4321" as Address, metadataURI: "ipfs://QmDutchNFT — Generative Geometry Collection", pricing: 1, price: parseUnits("0.00005", 18), auction: { startPrice: parseUnits("0.00005", 18), reservePrice: parseUnits("0.00001", 18), duration: BigInt(24 * 3600), startedAt: 0n }, status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "collectibles", deliveryURI: "", currentPrice: parseUnits("0.00003", 18) },
+    { id: 3n, seller: "0xABCD...EF01" as Address, metadataURI: "ipfs://QmMusicNFT — Lo-Fi Beat License", pricing: 0, price: parseUnits("0.000005", 18), auction: { startPrice: 0n, reservePrice: 0n, duration: 0n, startedAt: 0n }, status: 0, buyer: "0x0" as Address, escrowedAmount: 0n, createdAt: 0n, disputeDeadline: 0n, deliveryConfirmed: false, category: "music", deliveryURI: "", currentPrice: parseUnits("0.000005", 18) },
   ];
 
   // ── Helpers ──
@@ -262,7 +263,7 @@ export default function Marketplace() {
                           <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? chainCurrency : buyToken.toUpperCase()}</p>
                           {l.pricing === 1 && (
                             <p className="text-[10px] text-gray-400 mt-0.5">
-                              Started {formatUnits(l.price, 18)} · Reserve {formatUnits(l.escrowedAmount || 0n, 18)}
+                              Started {formatUnits(l.auction.startPrice, 18)} · Reserve {formatUnits(l.auction.reservePrice, 18)}
                             </p>
                           )}
                         </div>
@@ -308,7 +309,7 @@ export default function Marketplace() {
                           <p className="text-xl font-bold text-gray-900">{formatUnits(l.currentPrice, 18)} {buyToken === "native" ? chainCurrency : buyToken.toUpperCase()}</p>
                           {l.pricing === 1 && (
                             <p className="text-[10px] text-gray-400 mt-0.5">
-                              Started {formatUnits(l.price, 18)} · Reserve {formatUnits(l.escrowedAmount || 0n, 18)}
+                              Started {formatUnits(l.auction.startPrice, 18)} · Reserve {formatUnits(l.auction.reservePrice, 18)}
                             </p>
                           )}
                         </div>

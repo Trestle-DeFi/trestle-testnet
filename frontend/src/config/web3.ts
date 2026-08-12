@@ -8,7 +8,6 @@ export const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "";
 const AMOY_RPC = [
   "https://polygon-amoy.drpc.org",
   "https://rpc-amoy.polygon.technology/",
-  "https://amoy.blockscout.com/rpc",
 ];
 
 const BASE_SEPOLIA_RPC = [

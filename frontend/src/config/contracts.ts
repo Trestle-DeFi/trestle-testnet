@@ -6,7 +6,6 @@ export const CHAIN_CONFIG = {
     rpc: "https://rpc-amoy.polygon.technology/",
     explorer: "https://amoy.polygonscan.com",
     currency: { name: "POL", symbol: "POL", decimals: 18 },
-    blockscout: "https://amoy.blockscout.com",
   },
   baseSepolia: {
     id: 84532,

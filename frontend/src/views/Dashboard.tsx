@@ -6,7 +6,7 @@ import { formatUnits } from "viem";
 import { getBalance } from "wagmi/actions";
 import { config } from "../config/web3";
 import { CHAIN_CONFIG } from "../config/contracts";
-import { getTransactions, getAddressInfo, explorerTxUrl, type BlockscoutTx, type BlockscoutAddress } from "../lib/blockscout";
+import { getTransactions, getAddressInfo, getBlockscoutUrl, explorerTxUrl, type BlockscoutTx, type BlockscoutAddress } from "../lib/blockscout";
 
 interface ChainBalance {
   chainId: number;
@@ -25,12 +25,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!address) { setTxs(null); setAddrInfo(null); setChainBalances([]); return; }
-    setBsLoading(true);
-    Promise.all([getTransactions(address, 0, chainId), getAddressInfo(address, chainId)]).then(([txData, addrData]) => {
-      setTxs(txData);
-      setAddrInfo(addrData);
-      setBsLoading(false);
-    });
+    const bsUrl = getBlockscoutUrl(chainId);
+    if (!bsUrl) { setTxs(null); setAddrInfo(null); setBsLoading(false); }
+    else {
+      setBsLoading(true);
+      Promise.all([getTransactions(address, 0, chainId), getAddressInfo(address, chainId)]).then(([txData, addrData]) => {
+        setTxs(txData);
+        setAddrInfo(addrData);
+        setBsLoading(false);
+      });
+    }
 
     const chains = Object.values(CHAIN_CONFIG);
     setChainBalances(chains.map(c => ({ chainId: c.id, name: c.shortName, symbol: c.currency.symbol, balance: null, loading: true })));
