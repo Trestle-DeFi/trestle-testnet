@@ -10,6 +10,7 @@ export default function Freelance() {
   const { address, isConnected, freelancerEscrowReady, freelancerEscrowAddr, freelancerEscrowABI, explorer, chainCurrency } = useContracts();
   const { connector } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { chainId } = useAccount();
   const addr = freelancerEscrowAddr as Address;
 
   const [tab, setTab] = useState<Tab>("browse");
@@ -40,7 +41,7 @@ export default function Freelance() {
     return {
       descs: d.slice(0, n),
       amounts: a.slice(0, n),
-      deadlines: du.map(s => BigInt(parseInt(s) * 86400)),
+      deadlines: du.map(s => BigInt(Math.floor(Date.now() / 1000) + parseInt(s) * 86400)),
     };
   }
 
@@ -53,7 +54,7 @@ export default function Freelance() {
         abi: freelancerEscrowABI, address: addr,
         functionName: "createGig",
         args: [gigTitle, gigDesc, parseUnits(gigPrice, 18), descs, amounts.map(a => parseUnits(a, 18)), deadlines],
-        connector,
+        chainId, connector,
       } as any);
       setTxHash(hash);
     } catch (e: any) { console.error(e); alert(e?.message || "Failed to create gig"); }
@@ -69,7 +70,7 @@ export default function Freelance() {
         abi: freelancerEscrowABI, address: addr,
         functionName: "createProjectFixed",
         args: [projTitle, projDesc, parseUnits(projBudget, 18), descs, amounts.map(a => parseUnits(a, 18)), deadlines],
-        connector,
+        chainId, connector,
       } as any);
       setTxHash(hash);
     } catch (e: any) { console.error(e); alert(e?.message || "Failed to create project"); }
@@ -123,7 +124,7 @@ export default function Freelance() {
     try {
       const hash = await writeContractAsync({
         abi: ABI, address: addr, functionName: "hireGig",
-        args: [gigId], value: price, connector,
+        args: [gigId], value: price, chainId, connector,
       } as any);
       setTxHash(hash);
     } catch (e: any) { console.error(e); alert(e?.message || "Failed to hire"); }
