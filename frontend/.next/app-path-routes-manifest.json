@@ -1,8 +1,8 @@
 {
   "/_not-found/page": "/_not-found",
   "/faucet/page": "/faucet",
+  "/profile/page": "/profile",
   "/marketplace/page": "/marketplace",
   "/page": "/",
-  "/profile/page": "/profile",
   "/rwa/page": "/rwa"
 }

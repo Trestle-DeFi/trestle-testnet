@@ -93,9 +93,15 @@ export default function Marketplace() {
   const listings: Listing[] = useMemo(() => {
     if (!listingsRaw || !pricesRaw) return [];
     return listingIds.map((id, i) => {
-      const l = listingsRaw[i]?.result as any;
+      const r = listingsRaw[i]?.result as any;
       const p = pricesRaw[i]?.result as bigint | undefined;
-      if (!l) return null;
+      if (!r) return null;
+      const l: any = Array.isArray(r) ? {
+        id: r[0], seller: r[1], metadataURI: r[2], pricing: Number(r[3]),
+        price: r[4], auction: r[5], status: Number(r[6]), buyer: r[7],
+        escrowedAmount: r[8], createdAt: r[9], disputeDeadline: r[10],
+        deliveryConfirmed: r[11], paymentToken: r[12], category: r[13], deliveryURI: r[14],
+      } : r;
       return { ...l, currentPrice: p ?? l.price };
     }).filter(Boolean) as Listing[];
   }, [listingsRaw, pricesRaw, listingIds]);
