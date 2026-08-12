@@ -62,7 +62,7 @@ export default function Marketplace() {
   const addr = digitalGoodsAddr as Address;
 
   // ── Read listing count ──
-  const { data: countData } = useReadContracts({
+  const { data: countData, refetch: refetchCount } = useReadContracts({
     contracts: [{ abi: DG_ABI, address: addr, functionName: "listingCount", args: [] }],
     query: { enabled: digitalGoodsReady },
   } as any);
@@ -73,8 +73,8 @@ export default function Marketplace() {
   const listingCalls = useMemo(() => listingIds.map(id => ({ abi: DG_ABI, address: addr, functionName: "listings", args: [BigInt(id)] })), [listingIds, addr]);
   const priceCalls = useMemo(() => listingIds.map(id => ({ abi: DG_ABI, address: addr, functionName: "currentPrice", args: [BigInt(id)] })), [listingIds, addr]);
 
-  const { data: listingsRaw } = useReadContracts({ contracts: listingCalls as any, query: { enabled: listingCount > 0 } } as any);
-  const { data: pricesRaw } = useReadContracts({ contracts: priceCalls as any, query: { enabled: listingCount > 0 } } as any);
+  const { data: listingsRaw, refetch: refetchListings } = useReadContracts({ contracts: listingCalls as any, query: { enabled: listingCount > 0 } } as any);
+  const { data: pricesRaw, refetch: refetchPrices } = useReadContracts({ contracts: priceCalls as any, query: { enabled: listingCount > 0 } } as any);
 
   interface Listing {
     id: bigint; seller: Address; metadataURI: string; pricing: number;
@@ -129,6 +129,9 @@ export default function Marketplace() {
       await publicClient.waitForTransactionReceipt({ hash });
       setTxHash(hash);
       setMetaURI(""); setCategory("art"); setDeliveryURI(""); setFixedPrice(""); setStartPrice(""); setReservePrice(""); setDurationHrs("24");
+      await refetchCount();
+      await refetchListings();
+      await refetchPrices();
     } catch (e: any) { console.error(e); }
     finally { setBusy(false); }
   }
@@ -152,7 +155,10 @@ export default function Marketplace() {
         setTxHash(hash);
       }
     } catch (e: any) { console.error(e); }
-    finally { setBusy(false); setBuyingId(null); }
+    finally {
+      setBusy(false); setBuyingId(null);
+      refetchCount(); refetchListings(); refetchPrices();
+    }
   }
 
   if (!isConnected) {
