@@ -20,9 +20,7 @@ async function api(chainId: number, path: string) {
   const baseUrl = getBlockscoutUrl(chainId);
   if (!baseUrl) return null;
   try {
-    const opts: RequestInit = { headers: { "Content-Type": "application/json" } };
-    if (API_KEY) (opts.headers as Record<string, string>)["x-api-key"] = API_KEY;
-    const r = await fetch(`${baseUrl}/api/v2${path}`, opts);
+    const r = await fetch(`${baseUrl}/api/v2${path}`);
     if (!r.ok) return null;
     return r.json();
   } catch { return null; }

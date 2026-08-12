@@ -62,19 +62,25 @@ export default function Marketplace() {
   const addr = digitalGoodsAddr as Address;
 
   // ── Read listing count ──
-  const { data: countData, refetch: refetchCount } = useReadContracts({
+  const { data: countData, refetch: refetchCount, error: countError } = useReadContracts({
     contracts: [{ abi: DG_ABI, address: addr, functionName: "listingCount", args: [] }],
     query: { enabled: digitalGoodsReady },
   } as any);
   const listingCount = countData?.[0]?.result ? Number(countData[0].result) : 0;
+  if (countError) console.error("[Marketplace] listingCount error:", countError);
+  if (countData?.[0]) console.log("[Marketplace] listingCount result:", countData[0].status, countData[0].result?.toString(), "digitalGoodsReady:", digitalGoodsReady, "addr:", addr);
   const listingIds = useMemo(() => Array.from({ length: listingCount }, (_, i) => i + 1), [listingCount]);
 
   // ── Read all listings + current prices in batch ──
   const listingCalls = useMemo(() => listingIds.map(id => ({ abi: DG_ABI, address: addr, functionName: "listings", args: [BigInt(id)] })), [listingIds, addr]);
   const priceCalls = useMemo(() => listingIds.map(id => ({ abi: DG_ABI, address: addr, functionName: "currentPrice", args: [BigInt(id)] })), [listingIds, addr]);
 
-  const { data: listingsRaw, refetch: refetchListings } = useReadContracts({ contracts: listingCalls as any, query: { enabled: listingCount > 0 } } as any);
-  const { data: pricesRaw, refetch: refetchPrices } = useReadContracts({ contracts: priceCalls as any, query: { enabled: listingCount > 0 } } as any);
+  const { data: listingsRaw, refetch: refetchListings, error: listingsError } = useReadContracts({ contracts: listingCalls as any, query: { enabled: listingCount > 0 } } as any);
+  const { data: pricesRaw, refetch: refetchPrices, error: pricesError } = useReadContracts({ contracts: priceCalls as any, query: { enabled: listingCount > 0 } } as any);
+  if (listingsError) console.error("[Marketplace] listings error:", listingsError);
+  if (pricesError) console.error("[Marketplace] prices error:", pricesError);
+  if (listingsRaw?.[0]) console.log("[Marketplace] listings[0]:", JSON.stringify(listingsRaw[0], (_, v) => typeof v === "bigint" ? v.toString() + "n" : v));
+  if (pricesRaw?.[0]) console.log("[Marketplace] prices[0]:", pricesRaw[0].status, pricesRaw[0].result?.toString());
 
   interface Listing {
     id: bigint; seller: Address; metadataURI: string; pricing: number;
@@ -93,6 +99,9 @@ export default function Marketplace() {
       return { ...l, currentPrice: p ?? l.price };
     }).filter(Boolean) as Listing[];
   }, [listingsRaw, pricesRaw, listingIds]);
+
+  if (listings.length > 0) console.log("[Marketplace] parsed listings:", listings.length, "active:", listings.filter(l => l.status === 0).length);
+  else if (listingCount > 0 && listingsRaw) console.log("[Marketplace] listingsRaw type:", typeof listingsRaw, "length:", listingsRaw?.length, "first:", JSON.stringify(listingsRaw?.[0], (_, v) => typeof v === "bigint" ? v.toString() + "n" : v));
 
           const active = useMemo(() => {
     let filtered = listings.filter(l => l.status === 0);

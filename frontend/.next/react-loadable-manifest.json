@@ -772,8 +772,8 @@
       "static/chunks/8741.7d17c869bbf7a95b.js",
       "static/chunks/933.c2e302938ca522bd.js",
       "static/chunks/4197-9a699ed4518203d6.js",
-      "static/chunks/5363-6acb64e21e62b1a4.js",
-      "static/chunks/3367.c017603f3b4aea9e.js"
+      "static/chunks/5363-90429ef741527f6a.js",
+      "static/chunks/3367.655b58c20d1f1d2c.js"
     ]
   },
   "app/marketplace/page.tsx -> @/views/Marketplace": {
@@ -783,8 +783,8 @@
       "static/chunks/8741.7d17c869bbf7a95b.js",
       "static/chunks/933.c2e302938ca522bd.js",
       "static/chunks/4197-9a699ed4518203d6.js",
-      "static/chunks/5363-6acb64e21e62b1a4.js",
-      "static/chunks/4141.9bcf852bbbe2f6fd.js"
+      "static/chunks/5363-90429ef741527f6a.js",
+      "static/chunks/4141.b630a1e6c9dc5807.js"
     ]
   },
   "app/page.tsx -> @/views/Dashboard": {
@@ -792,15 +792,15 @@
     "files": [
       "static/chunks/198-921713b0ecfd6303.js",
       "static/chunks/4197-9a699ed4518203d6.js",
-      "static/chunks/5363-6acb64e21e62b1a4.js",
-      "static/chunks/3552.826bce14089c013b.js"
+      "static/chunks/5363-90429ef741527f6a.js",
+      "static/chunks/3552.74d940af9804df54.js"
     ]
   },
   "app/profile/page.tsx -> @/views/UserProfile": {
     "id": 90653,
     "files": [
       "static/chunks/198-921713b0ecfd6303.js",
-      "static/chunks/5363-6acb64e21e62b1a4.js",
+      "static/chunks/5363-90429ef741527f6a.js",
       "static/chunks/653.a6b8473adcdf4239.js"
     ]
   },
@@ -808,7 +808,7 @@
     "id": 28912,
     "files": [
       "static/chunks/198-921713b0ecfd6303.js",
-      "static/chunks/5363-6acb64e21e62b1a4.js",
+      "static/chunks/5363-90429ef741527f6a.js",
       "static/chunks/8912.ecfd60207fb26da7.js"
     ]
   }
