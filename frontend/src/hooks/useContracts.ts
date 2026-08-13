@@ -34,11 +34,10 @@ const FREELANCER_ESCROW_ABI = [
 
 const RWA_ABI = [
   { inputs: [{ name: "account", type: "address" }], name: "isWhitelisted", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "account", type: "address" }], name: "whitelisted", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "account", type: "address" }], name: "balanceOf", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "totalSupply", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "to", type: "address" }, { name: "amount", type: "uint256" }], name: "mint", outputs: [], stateMutability: "nonpayable", type: "function" },
-  { inputs: [{ name: "account", type: "address" }, { name: "status", type: "bool" }], name: "setWhitelist", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "account", type: "address" }, { name: "status", type: "bool" }], name: "setManualWhitelist", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ name: "token", type: "address" }, { name: "minBalance", type: "uint256" }], name: "setWhitelistToken", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [], name: "assetInfo", outputs: [{ name: "name", type: "string" }, { name: "description", type: "string" }, { name: "lockupDuration", type: "uint256" }, { name: "expectedReturnBps", type: "uint256" }, { name: "underlyingAsset", type: "string" }, { name: "redemptionDate", type: "uint256" }, { name: "redemptionPrice", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "cap", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
@@ -140,8 +139,8 @@ export function useContracts() {
     rwaABI: RWA_ABI,
     mintRWA: (to: Address, amount: string) =>
       write({ abi: RWA_ABI, address: digitalRWA, functionName: "mint", args: [to, parseUnits(amount, 18)] } as any),
-    setWhitelist: (account: Address, status: boolean) =>
-      write({ abi: RWA_ABI, address: digitalRWA, functionName: "setWhitelist", args: [account, status] } as any),
+    setManualWhitelist: (account: Address, status: boolean) =>
+      write({ abi: RWA_ABI, address: digitalRWA, functionName: "setManualWhitelist", args: [account, status] } as any),
     setWhitelistToken: (token: Address, minBalance: string) =>
       write({ abi: RWA_ABI, address: digitalRWA, functionName: "setWhitelistToken", args: [token, parseUnits(minBalance, 18)] } as any),
 

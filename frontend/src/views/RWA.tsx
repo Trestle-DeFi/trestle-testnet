@@ -105,7 +105,7 @@ export default function RWA() {
     if (!rwaReady || busy || !wlAddr) return;
     setBusy(true); setTxHash("");
     try {
-      const hash = await writeContractAsync({ abi: rwaABI, address: rwaAddr, functionName: "setWhitelist", args: [wlAddr as Address, status], connector } as any);
+      const hash = await writeContractAsync({ abi: rwaABI, address: rwaAddr, functionName: "setManualWhitelist", args: [wlAddr as Address, status], connector } as any);
       setTxHash(hash);
     } catch (e: any) { console.error(e); }
     finally { setBusy(false); }
