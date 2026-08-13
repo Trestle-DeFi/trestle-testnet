@@ -3,7 +3,7 @@
 ## Scope
 
 **In-scope:**
-- Smart contracts (Solidity 0.8.28) — FreelancerEscrow, DigitalGoods, DigitalRWA, FeeDistributor, UserProfile, MockGovernanceToken, MockERC20
+- Smart contracts (Solidity 0.8.24) — FreelancerEscrow, DigitalGoods, DigitalRWA, FeeDistributor, UserProfile, MockGovernanceToken, MockERC20
 - Frontend (Next.js + wagmi) — useContracts, web3 config, Marketplace/Freelance/RWA views
 - Deploy scripts (Hardhat)
 

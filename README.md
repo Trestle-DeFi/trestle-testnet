@@ -23,7 +23,7 @@ Testnet platform for Trestle DeFi. Smart contracts deployed on Polygon Amoy, wit
 
 ## Tech Stack
 
-- **Smart Contracts**: Hardhat (Solidity 0.8.28)
+- **Smart Contracts**: Hardhat (Solidity 0.8.24)
 - **Frontend**: Next.js + wagmi + Reown AppKit
 - **Styling**: Tailwind CSS
 
