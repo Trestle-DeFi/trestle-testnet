@@ -3,6 +3,8 @@ import { useAccount } from "wagmi";
 import { useReadContracts, useWriteContract } from "wagmi";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { useContracts } from "../hooks/useContracts";
+import ErrorBanner from "../components/ErrorBanner";
+import TxStatus, { type TxState } from "../components/TxStatus";
 
 type Tab = "browse" | "create-gig" | "create-project";
 
@@ -16,6 +18,8 @@ export default function Freelance() {
   const [tab, setTab] = useState<Tab>("browse");
   const [busy, setBusy] = useState(false);
   const [txHash, setTxHash] = useState("");
+  const [txStatus, setTxStatus] = useState<TxState>("confirmed");
+  const [error, setError] = useState("");
 
   // ── Create Gig form ──
   const [gigTitle, setGigTitle] = useState("Web Dev");
@@ -41,13 +45,13 @@ export default function Freelance() {
     return {
       descs: d.slice(0, n),
       amounts: a.slice(0, n),
-      deadlines: du.map(s => BigInt(Math.floor(Date.now() / 1000) + parseInt(s) * 86400)),
+      deadlines: du.slice(0, n).map(s => BigInt(Math.floor(Date.now() / 1000) + parseInt(s) * 86400)),
     };
   }
 
   async function handleCreateGig() {
     if (!freelancerEscrowReady || busy) return;
-    setBusy(true); setTxHash("");
+    setBusy(true); setTxHash(""); setError("");
     try {
       const { descs, amounts, deadlines } = parseMilestones(gigMsDesc, gigMsAmt, gigMsDur);
       const hash = await writeContractAsync({
@@ -56,14 +60,14 @@ export default function Freelance() {
         args: [gigTitle, gigDesc, parseUnits(gigPrice, 18), descs, amounts.map(a => parseUnits(a, 18)), deadlines],
         chainId, connector,
       } as any);
-      setTxHash(hash);
-    } catch (e: any) { console.error(e); alert(e?.message || "Failed to create gig"); }
+      setTxHash(hash); setTxStatus("pending");
+    } catch (e: any) { console.error(e); setError(e?.shortMessage || e?.message || "Failed to create gig"); setTxStatus("failed"); }
     finally { setBusy(false); }
   }
 
   async function handleCreateProject() {
     if (!freelancerEscrowReady || busy) return;
-    setBusy(true); setTxHash("");
+    setBusy(true); setTxHash(""); setError("");
     try {
       const { descs, amounts, deadlines } = parseMilestones(projMsDesc, projMsAmt, projMsDur);
       const hash = await writeContractAsync({
@@ -72,8 +76,8 @@ export default function Freelance() {
         args: [projTitle, projDesc, parseUnits(projBudget, 18), descs, amounts.map(a => parseUnits(a, 18)), deadlines],
         chainId, connector,
       } as any);
-      setTxHash(hash);
-    } catch (e: any) { console.error(e); alert(e?.message || "Failed to create project"); }
+      setTxHash(hash); setTxStatus("pending");
+    } catch (e: any) { console.error(e); setError(e?.shortMessage || e?.message || "Failed to create project"); setTxStatus("failed"); }
     finally { setBusy(false); }
   }
 
@@ -120,14 +124,14 @@ export default function Freelance() {
 
   async function handleHire(gigId: bigint, price: bigint) {
     if (!freelancerEscrowReady || busy) return;
-    setBusy(true); setTxHash("");
+    setBusy(true); setTxHash(""); setError("");
     try {
       const hash = await writeContractAsync({
         abi: ABI, address: addr, functionName: "hireGig",
         args: [gigId], value: price, chainId, connector,
       } as any);
-      setTxHash(hash);
-    } catch (e: any) { console.error(e); alert(e?.message || "Failed to hire"); }
+      setTxHash(hash); setTxStatus("pending");
+    } catch (e: any) { console.error(e); setError(e?.shortMessage || e?.message || "Failed to hire"); setTxStatus("failed"); }
     finally { setBusy(false); }
   }
 
@@ -158,10 +162,10 @@ export default function Freelance() {
       </div>
 
       {txHash && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-700 break-all">
-          Tx: <a href={`${explorer}/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="underline font-mono">{txHash.slice(0, 20)}...</a>
-        </div>
+        <TxStatus hash={txHash} status={txStatus} explorer={explorer} />
       )}
+
+      <ErrorBanner message={error} onDismiss={() => setError("")} />
 
       {tab === "browse" && (
         <div className="grid md:grid-cols-2 gap-6">

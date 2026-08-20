@@ -17,7 +17,7 @@ interface ChainBalance {
 }
 
 export default function Dashboard() {
-  const { address, balance, chainId, chainName } = useContracts();
+  const { address, balance, chainId, chainName, chainCurrency } = useContracts();
   const [txs, setTxs] = useState<BlockscoutTx[] | null>(null);
   const [addrInfo, setAddrInfo] = useState<BlockscoutAddress | null>(null);
   const [bsLoading, setBsLoading] = useState(false);
@@ -48,7 +48,7 @@ export default function Dashboard() {
     ).then(setChainBalances);
   }, [address, chainId]);
 
-  const otherTokens = addrInfo?.token_balances?.filter(t => t.token.symbol !== "MATIC") ?? [];
+  const otherTokens = addrInfo?.token_balances?.filter(t => t.token.symbol !== chainCurrency) ?? [];
 
   function ago(ts: string) {
     const sec = (Date.now() - new Date(ts).getTime()) / 1000;
@@ -111,7 +111,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : balance ? (
-            <p className="text-3xl font-bold text-gray-900 text-center">{parseFloat(balance).toFixed(4)} MATIC</p>
+            <p className="text-3xl font-bold text-gray-900 text-center">{parseFloat(balance).toFixed(4)} {chainCurrency}</p>
           ) : (
             <LoadingSpinner label="Fetching balance..." />
           )}
