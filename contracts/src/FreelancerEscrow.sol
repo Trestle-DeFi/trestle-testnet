@@ -77,6 +77,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     bool public yieldEnabled = true;
     address public feeDistributor;
     mapping(uint256 => uint256) public projectShares;
+    mapping(address => bool) public allowedTokens;
 
     event ProjectCreated(uint256 indexed id, address indexed client, string title, uint256 budget);
     event ProjectFunded(uint256 indexed id, address indexed client, uint256 amount);
@@ -99,6 +100,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     event FundsDepositedToVault(uint256 indexed id, uint256 assets);
     event FundsWithdrawnFromVault(uint256 indexed id, uint256 principal, uint256 yieldOut);
     event YieldDistributed(uint256 indexed id, address token, uint256 amount);
+    event TokenAllowed(address indexed token, bool allowed);
 
     error NotClient();
     error NotFreelancer();
@@ -114,6 +116,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     error TooFewMilestones();
     error ZeroAddress();
     error TransferFailed();
+    error TokenNotAllowed();
 
     modifier onlyClient(uint256 _id) {
         if (msg.sender != projects[_id].client) revert NotClient();
@@ -136,6 +139,12 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (_treasury == address(0)) revert ZeroAddress();
         treasury = _treasury;
         emit TreasuryUpdated(_treasury);
+    }
+
+    function setTokenAllowed(address _token, bool _allowed) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_token == address(0)) revert ZeroAddress();
+        allowedTokens[_token] = _allowed;
+        emit TokenAllowed(_token, _allowed);
     }
 
     function setYieldVault(address _yieldVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -177,6 +186,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         for (uint256 i; i < len; i++) {
             if (_milestoneAmounts[i] == 0) revert InvalidMilestoneAmount();
             if (_milestoneDeadlines[i] <= block.timestamp) revert PastDeadline();
+            if (i > 0 && _milestoneDeadlines[i] <= _milestoneDeadlines[i - 1]) revert InvalidMilestoneAmount();
             totalCheck += _milestoneAmounts[i];
         }
         if (totalCheck != _totalBudget) revert BudgetTooLow();
@@ -460,6 +470,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     }
 
     function fundProjectWithToken(uint256 _id, address _token, uint256 _amount) external nonReentrant onlyClient(_id) {
+        if (!allowedTokens[_token]) revert TokenNotAllowed();
         Project storage p = projects[_id];
         if (p.status != ProjectStatus.Open) revert WrongStatus();
         if (p.escrowedAmount > 0) revert MixedPayment();
@@ -534,6 +545,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
 
     function autoApproveMilestone(uint256 _id, uint256 _milestoneIndex) external nonReentrant {
         Project storage p = projects[_id];
+        if (msg.sender != p.client && msg.sender != p.freelancer) revert NotParticipant();
         if (_milestoneIndex >= p.milestones.length) revert WrongMilestone();
         Milestone storage m = p.milestones[_milestoneIndex];
         if (m.status != MilestoneStatus.Submitted) revert WrongMilestone();
@@ -561,7 +573,10 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         p.escrowedAmount = 0;
         address recipient = _toFreelancer ? p.freelancer : p.client;
         if (amount > 0) {
-            _send(p.paymentToken, recipient, amount);
+            uint256 fee = (amount * PLATFORM_FEE_BPS) / BPS;
+            uint256 netAmount = amount - fee;
+            if (fee > 0) _send(p.paymentToken, treasury, fee);
+            _send(p.paymentToken, recipient, netAmount);
         }
         if (yieldOut > 0) _distributeYield(_id, p.paymentToken, yieldOut);
         emit Resolved(_id, _toFreelancer);
@@ -569,6 +584,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
 
     function autoResolveDispute(uint256 _id) external nonReentrant {
         Project storage p = projects[_id];
+        if (msg.sender != p.client && msg.sender != p.freelancer) revert NotParticipant();
         if (p.status != ProjectStatus.Disputed) revert WrongStatus();
         if (block.timestamp < p.disputeDeadline) revert WrongStatus();
 
