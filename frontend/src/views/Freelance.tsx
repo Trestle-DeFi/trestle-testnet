@@ -61,6 +61,7 @@ export default function Freelance() {
     setBusy(true); setTxHash(""); setError("");
     try {
       const { descs, amounts, deadlines } = parseMilestones(gigMsDesc, gigMsAmt, gigMsDur);
+      if (amounts.some(a => parseUnits(a, 18) === 0n)) { alert("Each milestone amount must be > 0"); setBusy(false); return; }
       const hash = await writeContractAsync({
         abi: freelancerEscrowABI, address: addr,
         functionName: "createGig",
@@ -77,6 +78,7 @@ export default function Freelance() {
     setBusy(true); setTxHash(""); setError("");
     try {
       const { descs, amounts, deadlines } = parseMilestones(projMsDesc, projMsAmt, projMsDur);
+      if (amounts.some(a => parseUnits(a, 18) === 0n)) { alert("Each milestone amount must be > 0"); setBusy(false); return; }
       const hash = await writeContractAsync({
         abi: freelancerEscrowABI, address: addr,
         functionName: "createProjectFixed",
