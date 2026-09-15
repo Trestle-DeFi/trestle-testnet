@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useContracts } from "../hooks/useContracts";
 import LoadingSpinner from "../components/LoadingSpinner";
 import QRIcon from "../components/QRIcon";
+import GuideModal from "../components/GuideModal";
 import { formatUnits } from "viem";
 import { getBalance } from "wagmi/actions";
 import { config } from "../config/web3";
@@ -87,6 +88,7 @@ export default function Dashboard() {
             ) : (
               <w3m-button />
             )}
+            <GuideModal />
           </div>
         </div>
       </section>
