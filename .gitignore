@@ -30,7 +30,17 @@ verify-*.json
 # Foundry
 foundry.toml.bak
 
-# OS
+# Slither
+slither/
+/tmp/slither-env/
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+*~
 .DS_Store
+
+# OS
 Thumbs.db
 Desktop.ini

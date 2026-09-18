@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.36;
+pragma solidity ^0.8.37;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -163,17 +163,13 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         uint256 price = currentPrice(_id);
         if (msg.value < price) revert PriceTooLow();
 
-        uint256 fee = (price * PLATFORM_FEE_BPS) / BPS;
-        uint256 sellerAmount = price - fee;
-
         l.status = ListingStatus.Sold;
         l.buyer = msg.sender;
         l.paymentToken = address(0);
-        l.escrowedAmount = sellerAmount;
+        // E-4 fix: escrow the FULL price; the platform fee is collected only when
+        // the sale is finally released to the seller, so buyer refunds are 100%.
+        l.escrowedAmount = price;
         l.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
-
-        (bool feeSent,) = treasury.call{value: fee}("");
-        if (!feeSent) revert TransferFailed();
 
         uint256 excess = msg.value - price;
         if (excess > 0) {
@@ -193,15 +189,11 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         uint256 price = currentPrice(_id);
         if (_amount < price) revert PriceTooLow();
 
-        uint256 fee = (price * PLATFORM_FEE_BPS) / BPS;
-        uint256 sellerAmount = price - fee;
-
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        if (fee > 0) IERC20(_token).safeTransfer(treasury, fee);
         l.status = ListingStatus.Sold;
         l.buyer = msg.sender;
         l.paymentToken = _token;
-        l.escrowedAmount = sellerAmount;
+        l.escrowedAmount = price; // E-4 fix: full price escrowed, fee taken at release
         l.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
 
         if (_amount > price) {
@@ -211,7 +203,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         emit Purchased(_id, msg.sender, price);
     }
 
-    function submitDelivery(uint256 _id, string calldata _deliveryHash) external {
+    function submitDelivery(uint256 _id, string calldata _deliveryHash) external nonReentrant {
         Listing storage l = listings[_id];
         if (msg.sender != l.seller) revert NotSeller();
         if (l.status != ListingStatus.Sold || l.deliveryConfirmed) revert WrongStatus();
@@ -229,7 +221,9 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         emit DeliveryConfirmed(_id);
     }
 
-    function dispute(uint256 _id) external {
+    // H-2/A-4 fix: add nonReentrant for consistency with every other
+    // state-changing function (defense-in-depth; no external calls here).
+    function dispute(uint256 _id) external nonReentrant {
         Listing storage l = listings[_id];
         if (msg.sender != l.buyer && msg.sender != l.seller) revert WrongStatus();
         if (l.status != ListingStatus.Sold || l.deliveryConfirmed) revert WrongStatus();
@@ -257,6 +251,27 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         emit Resolved(_id, toSeller);
     }
 
+    /// @notice E-3 fix: platform arbitration for disputed listings.
+    /// @dev Previously a disputed listing ALWAYS resolved to the buyer after the
+    ///      timeout — sellers had no recourse against a free-riding buyer. The
+    ///      owner (platform) can now rule either way, at any point while the
+    ///      listing is Disputed. `resolveAfterTimeout` remains as the default
+    ///      buyer-favorable fallback if no arbitration happens in time.
+    /// @param _toBuyer true → refund the buyer in full; false → release to seller.
+    function resolveDispute(uint256 _id, bool _toBuyer) external onlyOwner nonReentrant {
+        Listing storage l = listings[_id];
+        if (l.status != ListingStatus.Disputed) revert WrongStatus();
+
+        if (_toBuyer) {
+            l.status = ListingStatus.Refunded;
+            _releaseToBuyer(_id);
+        } else {
+            l.deliveryConfirmed = true;
+            _releaseToSeller(_id);
+        }
+        emit Resolved(_id, _toBuyer);
+    }
+
     function cancelListing(uint256 _id) external nonReentrant {
         Listing storage l = listings[_id];
         if (msg.sender != l.seller) revert NotSeller();
@@ -271,11 +286,20 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (l.escrowedAmount == 0) revert NoRefundNeeded();
         uint256 amount = l.escrowedAmount;
         l.escrowedAmount = 0;
+        // E-4 fix: the platform fee is collected here — at final release — so
+        // buyer refunds (_releaseToBuyer) return the full price incl. the fee.
+        uint256 fee = (amount * PLATFORM_FEE_BPS) / BPS;
+        uint256 sellerAmount = amount - fee;
         if (l.paymentToken == address(0)) {
-            (bool sent,) = l.seller.call{value: amount}("");
+            if (fee > 0) {
+                (bool feeSent,) = treasury.call{value: fee}("");
+                if (!feeSent) revert TransferFailed();
+            }
+            (bool sent,) = l.seller.call{value: sellerAmount}("");
             if (!sent) revert TransferFailed();
         } else {
-            IERC20(l.paymentToken).safeTransfer(l.seller, amount);
+            if (fee > 0) IERC20(l.paymentToken).safeTransfer(treasury, fee);
+            IERC20(l.paymentToken).safeTransfer(l.seller, sellerAmount);
         }
     }
 

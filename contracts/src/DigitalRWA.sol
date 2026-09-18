@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.36;
+pragma solidity ^0.8.37;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
@@ -11,6 +11,7 @@ import "./interfaces/AggregatorV3Interface.sol";
 contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, ReentrancyGuard {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+    bytes32 public constant ALLOWLIST_MANAGER = keccak256("ALLOWLIST_MANAGER");
 
     struct AssetInfo {
         string name;
@@ -39,11 +40,24 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
     uint256 public currentPrice;
     uint256 public lastPriceUpdate;
     uint256 public constant STALE_PRICE_THRESHOLD = 3600;
+    /// @dev M-1 fix: `isWhitelisted()` loops over this list with an external
+    ///      `balanceOf()` call per token and runs on EVERY transfer — cap the
+    ///      list length to bound the gas cost.
+    uint256 public constant MAX_WHITELIST_TOKENS = 10;
+    /// @dev Joop reply (item 7): max accepted relative price move per sync, in
+    ///      percent — blunts a compromised/manipulated feed. Admin
+    ///      `setManualPrice` intentionally bypasses this check.
+    uint256 public constant MAX_PRICE_DEVIATION_PCT = 20;
 
     mapping(address => bool) public manualWhitelist;
+    /// @dev Joop reply (item 9): off-chain bot sets a flag with 24h expiry.
+    ///      Checked in isWhitelisted() alongside token-balance loop.
+    mapping(address => uint256) public whitelistExpiry;
+    uint256 public constant WHITELIST_FLAG_DURATION = 24 hours;
 
     event MetadataUpdated(string uri);
     event Whitelisted(address indexed account, bool indexed status);
+    event WhitelistFlagSet(address indexed account, uint256 expiry);
     event AssetInfoUpdated(AssetInfo info);
     event PriceUpdated(uint256 price, uint256 timestamp);
     event ETHWithdrawn(address indexed to, uint256 amount);
@@ -58,6 +72,8 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
     error AssetInfoAlreadySet();
     error InsufficientBalance();
     error TransferFailed();
+    error TooManyWhitelistTokens();
+    error PriceDeviationTooHigh();
 
     constructor(
         string memory _name,
@@ -87,6 +103,7 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
 
     function isWhitelisted(address _account) public view returns (bool) {
         if (manualWhitelist[_account]) return true;
+        if (whitelistExpiry[_account] > block.timestamp) return true;
         uint256 len = whitelistTokenList.length;
         for (uint256 i; i < len; i++) {
             address token = whitelistTokenList[i];
@@ -100,11 +117,25 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
         (, int256 answer, , uint256 updatedAt, ) = priceFeed.latestRoundData();
         if (block.timestamp - updatedAt >= STALE_PRICE_THRESHOLD) revert StalePrice();
         if (answer <= 0) revert InvalidPrice();
-        currentPrice = uint256(answer);
+
+        uint256 newPrice = uint256(answer);
+        // Joop reply (item 7): reject suspicious moves — a compromised feed must
+        // not jump the price (and thus minting power) in a single sync.
+        if (currentPrice > 0) {
+            uint256 deviation = newPrice > currentPrice ? newPrice - currentPrice : currentPrice - newPrice;
+            if (deviation * 100 / currentPrice > MAX_PRICE_DEVIATION_PCT) revert PriceDeviationTooHigh();
+        }
+
+        currentPrice = newPrice;
         lastPriceUpdate = block.timestamp;
-        emit PriceUpdated(uint256(answer), block.timestamp);
+        emit PriceUpdated(newPrice, block.timestamp);
     }
 
+    /// @notice Admin-set manual price (dead-oracle fallback).
+    /// @dev A-5: this bypasses the Chainlink feed and its staleness threshold
+    ///      entirely — `subscribe()` pricing becomes fully admin-controlled while
+    ///      a manual price is in use. Intended for testnet/emergencies; for
+    ///      production consider a timelock or removing this power.
     function setManualPrice(uint256 _price) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
         if (_price == 0) revert InvalidPrice();
         currentPrice = _price;
@@ -119,11 +150,18 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
         _mint(_to, _amount);
     }
 
+    /// @notice Mint RWA tokens for ETH at the current oracle/admin price.
+    /// @dev E-5 fix: rejects when the price is stale — previously only
+    ///      `syncPrice()` enforced freshness, so users could mint at an
+    ///      arbitrarily old `currentPrice`.
     function subscribe() external payable nonReentrant {
         if (msg.value == 0) revert InsufficientBalance();
         if (!isWhitelisted(msg.sender)) revert NotWhitelisted();
+        if (block.timestamp - lastPriceUpdate >= STALE_PRICE_THRESHOLD) revert StalePrice();
         if (currentPrice == 0) revert InvalidPrice();
-        uint256 tokensToMint = (msg.value * currentPrice) / 1e8;
+        // Joop reply (item 7): never assume 8 feed decimals — read them from the
+        // feed so a different-precision oracle can't mint 10^10x too many tokens.
+        uint256 tokensToMint = (msg.value * currentPrice) / (10 ** priceFeed.decimals());
         if (tokensToMint == 0) revert InsufficientBalance();
         if (totalSupply() + tokensToMint > cap) revert CapExceeded();
         _mint(msg.sender, tokensToMint);
@@ -152,6 +190,17 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
         emit Whitelisted(_account, _status);
     }
 
+    /// @notice Set a time-limited whitelist flag for an account.
+    /// @dev Joop reply (item 9): off-chain bot/keeper sets this after evaluating
+    ///      eligibility. Flag expires after WHITELIST_FLAG_DURATION (24h).
+    ///      The bot calls this per qualifying user instead of the gas-heavy
+    ///      token-balance loop running on every transfer.
+    function setWhitelistFlag(address _account) external onlyRole(ALLOWLIST_MANAGER) {
+        if (_account == address(0)) revert ZeroAddress();
+        whitelistExpiry[_account] = block.timestamp + WHITELIST_FLAG_DURATION;
+        emit WhitelistFlagSet(_account, whitelistExpiry[_account]);
+    }
+
     function setWhitelistToken(address _token, uint256 _minBalance) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_token == address(0)) revert ZeroAddress();
         if (_minBalance == 0) {
@@ -167,7 +216,11 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
                 }
             }
         } else {
-            if (whitelistTokens[_token] == 0) whitelistTokenList.push(_token);
+            if (whitelistTokens[_token] == 0) {
+                // M-1 fix: bound the whitelist token list (see MAX_WHITELIST_TOKENS).
+                if (whitelistTokenList.length >= MAX_WHITELIST_TOKENS) revert TooManyWhitelistTokens();
+                whitelistTokenList.push(_token);
+            }
             whitelistTokens[_token] = _minBalance;
         }
         if (address(govToken) == _token) {

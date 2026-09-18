@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.36;
+pragma solidity ^0.8.37;
 
 interface AggregatorV3Interface {
     function decimals() external view returns (uint8);
