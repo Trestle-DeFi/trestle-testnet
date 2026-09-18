@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.36;
+pragma solidity ^0.8.37;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -26,11 +26,17 @@ contract UserProfile is Ownable {
 
     uint256 public constant REVIEW_COOLDOWN = 1 days;
     uint256 public constant MIN_TOKEN_BALANCE = 1e18;
+    /// @dev Joop reply (item 12): global per-reviewer cooldown — caps spam at
+    ///      ~1 review/day/account regardless of target (the old per-pair check
+    ///      only limited repeats against the same user).
+    uint256 public constant GLOBAL_REVIEW_COOLDOWN = 1 days;
 
     address public reviewToken;
     mapping(address => Profile) public profiles;
     mapping(address => Review[]) public reviewsReceived;
     mapping(address => mapping(address => uint256)) public lastReviewTime;
+    /// @dev Joop reply (item 12): global per-reviewer last-review timestamp.
+    mapping(address => uint256) public lastGlobalReview;
 
     event ProfileUpdated(
         address indexed user,
@@ -82,13 +88,22 @@ contract UserProfile is Ownable {
         emit ProfileUpdated(msg.sender, _name, _avatarURI, _bio, _github, _website, _location, _skills, _twitter, _telegram);
     }
 
+    /// @notice Submit a review for `_user`.
+    /// @dev L-2 (accepted): the cooldown is tracked per `(reviewer, user)` pair, so
+    ///      one reviewer can review the same user once per day but Sybil accounts
+    ///      can still spam different reviewers. Partially mitigated by the
+    ///      `MIN_TOKEN_BALANCE` token gate — accepted for testnet.
     function submitReview(address _user, uint8 _rating, string calldata _comment) external {
         if (_rating == 0 || _rating > 5) revert InvalidRating();
         if (msg.sender == _user) revert SelfReview();
         if (block.timestamp < lastReviewTime[msg.sender][_user] + REVIEW_COOLDOWN) revert ReviewTooSoon();
+        // Joop reply (item 12): global cooldown — one review per reviewer per day
+        // across ALL users, not just the same target.
+        if (block.timestamp < lastGlobalReview[msg.sender] + GLOBAL_REVIEW_COOLDOWN) revert ReviewTooSoon();
         if (IERC20(reviewToken).balanceOf(msg.sender) < MIN_TOKEN_BALANCE) revert InsufficientBalance();
 
         lastReviewTime[msg.sender][_user] = block.timestamp;
+        lastGlobalReview[msg.sender] = block.timestamp;
         reviewsReceived[_user].push(Review(msg.sender, _rating, _comment, block.timestamp));
         emit ReviewSubmitted(msg.sender, _user, _rating, _comment);
     }

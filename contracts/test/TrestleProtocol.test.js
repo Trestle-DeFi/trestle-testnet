@@ -294,10 +294,12 @@ describe("Testnet Contracts", function () {
 
       const treasuryBalBefore = await ethers.provider.getBalance(treasury.address);
       await digitalGoods.connect(buyer).buy(1, { value: price });
-      const treasuryBalAfter = await ethers.provider.getBalance(treasury.address);
-
+      // E-4 fix: no fee at buy time — it is collected when the sale is released
       const fee = price * FEE / BPS_DENOM;
-      expect(treasuryBalAfter - treasuryBalBefore).to.equal(fee);
+      expect((await ethers.provider.getBalance(treasury.address)) - treasuryBalBefore).to.equal(0);
+
+      await digitalGoods.connect(buyer).confirmDelivery(1);
+      expect((await ethers.provider.getBalance(treasury.address)) - treasuryBalBefore).to.equal(fee);
     });
   });
 

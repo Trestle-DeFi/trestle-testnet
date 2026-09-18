@@ -3,7 +3,7 @@ require("dotenv").config();
 
 module.exports = {
   solidity: {
-    version: "0.8.36",
+    version: "0.8.37",
     settings: {
       evmVersion: "cancun",
       optimizer: { enabled: true, runs: 200 },

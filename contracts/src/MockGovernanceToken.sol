@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.36;
+pragma solidity ^0.8.37;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -21,7 +21,10 @@ contract MockGovernanceToken is ERC20, Ownable {
         _mint(_to, _amount);
     }
 
-    function burn(address _from, uint256 _amount) external {
+    /// @notice Burn tokens from any address. A-1 fix: restricted to the owner —
+    ///         previously ANY address could burn anyone's balance, griefing
+    ///         token-gated features (UserProfile reviews, DigitalRWA whitelist).
+    function burn(address _from, uint256 _amount) external onlyOwner {
         _burn(_from, _amount);
     }
 

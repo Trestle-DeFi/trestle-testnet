@@ -376,6 +376,10 @@ describe("Trestle Protocol — Heavy Test Suite", function () {
       const tBefore = await ethers.provider.getBalance(treasury.address);
       await digitalGoods.connect(buyer).buy(1, { value: price });
       const fee = price * FEE / BPS;
+      // E-4 fix: the fee is collected at final release, not at buy time —
+      // buyer refunds are now 100% of the price.
+      expect(await ethers.provider.getBalance(treasury.address) - tBefore).to.equal(0);
+      await digitalGoods.connect(buyer).confirmDelivery(1);
       expect(await ethers.provider.getBalance(treasury.address) - tBefore).to.equal(fee);
     });
 

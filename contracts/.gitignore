@@ -20,5 +20,14 @@ node_modules/
 coverage/
 coverage.json
 
+# Slither
+slither/
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+*~
+
 # OS
 .DS_Store

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.36;
+pragma solidity ^0.8.37;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -52,6 +52,10 @@ contract FeeDistributor is Ownable, ReentrancyGuard {
         emit BuybackBurnUpdated(_buybackBurn);
     }
 
+    /// @notice Set the yield/treasury split in basis points (L-4).
+    /// @dev The buyback share is implicitly `BPS - _yieldBps - _treasuryBps`. Because
+    ///      the sum is required to equal exactly `BPS`, the remainder is exact —
+    ///      no rounding dust is possible; this is a documentation concern only.
     function setSplitBps(uint256 _yieldBps, uint256 _treasuryBps) external onlyOwner {
         if (_yieldBps + _treasuryBps != BPS) revert InvalidSplit();
         yieldBps = _yieldBps;
@@ -71,6 +75,11 @@ contract FeeDistributor is Ownable, ReentrancyGuard {
         uint256 ys = (balance * yieldBps) / BPS;
         uint256 ts = (balance * treasuryBps) / BPS;
         uint256 bs = balance - ys - ts;
+
+        // H-3 fix: never route a non-zero yield share to the (unset) zero address.
+        // `_transfer` reverts on `to == address(0)`, which would DoS the entire
+        // distribution; fail early with a clear error until the vault is set.
+        if (ys > 0 && yieldVault == address(0)) revert ZeroAddress();
 
         if (ys > 0) _transfer(token, yieldVault, ys);
         if (ts > 0) _transfer(token, treasury, ts);
