@@ -14,7 +14,7 @@ We run a bug bounty program with tiered rewards. All hNOBT rewards are 10x the b
 
 1. **Vulnerability Title**
 2. **Steps to Reproduce**
-3. **Proof of Concept** (Amoy Testnet tx hash or code)
+3. **Proof of Concept** (Amoy, Arbitrum Sepolia, or Base Sepolia Testnet tx hash or code)
 
 ### Response Timeline
 
@@ -33,7 +33,7 @@ We run a bug bounty program with tiered rewards. All hNOBT rewards are 10x the b
 
 ### Sybil-Defense Rules
 
-1. **Proof-of-Concept Requirement:** No S1, S2, or S3 bug bounty points will be logged without an accompanying active **Polygon Amoy Testnet Transaction Hash** or a valid, reproducible local code fork.
+1. **Proof-of-Concept Requirement:** No S1, S2, or S3 bug bounty points will be logged without an accompanying active **Polygon Amoy, Arbitrum Sepolia, or Base Sepolia Testnet Transaction Hash** or a valid, reproducible local code fork.
 
 2. **Retention Rule:** Growth referrals are only counted if the incoming users pass Trestle Telegram/Discord captcha gate and stay active for at least 72 hours.
 
