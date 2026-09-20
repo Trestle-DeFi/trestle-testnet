@@ -34,9 +34,6 @@ foundry.toml.bak
 slither/
 /tmp/slither-env/
 
-# Wrangler state
-.wrangler/
-
 # Temp files
 *.tmp
 *.bak
