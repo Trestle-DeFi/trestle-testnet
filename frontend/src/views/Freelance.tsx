@@ -3,6 +3,7 @@ import { useAccount } from "wagmi";
 import { useReadContracts, useWriteContract } from "wagmi";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { useContracts } from "../hooks/useContracts";
+import { validateGigDraft, validateProjectDraft } from "../lib/validation";
 import ErrorBanner from "../components/ErrorBanner";
 import TxStatus, { type TxState } from "../components/TxStatus";
 
@@ -56,12 +57,23 @@ export default function Freelance() {
     };
   }
 
+  // ── F1: client-side validation of the create-gig / create-project forms ──
+  const gigFormError = useMemo(
+    () => validateGigDraft({ title: gigTitle, descriptionURI: gigDesc, price: gigPrice, milestones: { descriptions: gigMsDesc, amounts: gigMsAmt, durations: gigMsDur } }),
+    [gigTitle, gigDesc, gigPrice, gigMsDesc, gigMsAmt, gigMsDur],
+  );
+  const projectFormError = useMemo(
+    () => validateProjectDraft({ title: projTitle, descriptionURI: projDesc, totalBudget: projBudget, milestones: { descriptions: projMsDesc, amounts: projMsAmt, durations: projMsDur } }),
+    [projTitle, projDesc, projBudget, projMsDesc, projMsAmt, projMsDur],
+  );
+
   async function handleCreateGig() {
     if (!freelancerEscrowReady || busy) return;
+    const invalid = validateGigDraft({ title: gigTitle, descriptionURI: gigDesc, price: gigPrice, milestones: { descriptions: gigMsDesc, amounts: gigMsAmt, durations: gigMsDur } });
+    if (invalid) { setError(invalid); return; }
     setBusy(true); setTxHash(""); setError("");
     try {
       const { descs, amounts, deadlines } = parseMilestones(gigMsDesc, gigMsAmt, gigMsDur);
-      if (amounts.some(a => parseUnits(a, 18) === 0n)) { alert("Each milestone amount must be > 0"); setBusy(false); return; }
       const hash = await writeContractAsync({
         abi: freelancerEscrowABI, address: addr,
         functionName: "createGig",
@@ -75,10 +87,11 @@ export default function Freelance() {
 
   async function handleCreateProject() {
     if (!freelancerEscrowReady || busy) return;
+    const invalid = validateProjectDraft({ title: projTitle, descriptionURI: projDesc, totalBudget: projBudget, milestones: { descriptions: projMsDesc, amounts: projMsAmt, durations: projMsDur } });
+    if (invalid) { setError(invalid); return; }
     setBusy(true); setTxHash(""); setError("");
     try {
       const { descs, amounts, deadlines } = parseMilestones(projMsDesc, projMsAmt, projMsDur);
-      if (amounts.some(a => parseUnits(a, 18) === 0n)) { alert("Each milestone amount must be > 0"); setBusy(false); return; }
       const hash = await writeContractAsync({
         abi: freelancerEscrowABI, address: addr,
         functionName: "createProjectFixed",
@@ -251,10 +264,11 @@ export default function Freelance() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
           ))}
-          <button onClick={handleCreateGig} disabled={busy || !freelancerEscrowReady}
+          <button onClick={handleCreateGig} disabled={busy || !freelancerEscrowReady || !!gigFormError}
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition">
             {busy ? "Creating..." : "Create Gig"}
           </button>
+          {gigFormError && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{gigFormError}</p>}
         </div>
       )}
 
@@ -278,10 +292,11 @@ export default function Freelance() {
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
             </div>
           ))}
-          <button onClick={handleCreateProject} disabled={busy || !freelancerEscrowReady}
+          <button onClick={handleCreateProject} disabled={busy || !freelancerEscrowReady || !!projectFormError}
             className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-medium rounded-lg transition">
             {busy ? "Creating..." : "Create Project"}
           </button>
+          {projectFormError && <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{projectFormError}</p>}
         </div>
       )}
     </div>
