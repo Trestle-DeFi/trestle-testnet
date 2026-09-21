@@ -274,6 +274,42 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         }
     }
 
+    /// @dev Returns the sum of all non-approved milestone amounts.
+    function _remainingMilestoneAmount(Project storage p) private view returns (uint256) {
+        uint256 total;
+        for (uint256 i; i < p.milestones.length; i++) {
+            if (p.milestones[i].status != MilestoneStatus.Approved) {
+                total += p.milestones[i].amount;
+            }
+        }
+        return total;
+    }
+
+    /// @dev TRESTLE-2026-01 fix: when a Dutch-auction project is funded at a
+    ///      discounted price, the original milestone amounts (validated against
+    ///      maxBudget) exceed the escrowed amount. Scale them proportionally so
+    ///      that sum(milestones) == escrowedAmount and the normal payout path
+    ///      works. Rounding dust goes to the last milestone.
+    function _scaleMilestonesForDutch(uint256 _id) private {
+        Project storage p = projects[_id];
+        if (p.pricing != PricingMode.DutchAuction) return;
+        uint256 escrowed = p.escrowedAmount;
+        if (escrowed == 0 || escrowed >= p.totalBudget) return;
+
+        uint256 len = p.milestones.length;
+        uint256 scaledSum;
+        for (uint256 i; i < len; i++) {
+            uint256 scaled = (p.milestones[i].amount * escrowed) / p.totalBudget;
+            if (scaled == 0) scaled = 1; // prevent zero-amount milestones
+            p.milestones[i].amount = scaled;
+            scaledSum += scaled;
+        }
+        // Assign rounding dust to the last milestone
+        if (scaledSum < escrowed) {
+            p.milestones[len - 1].amount += escrowed - scaledSum;
+        }
+    }
+
     function _vaultAsset() private view returns (address) {
         if (yieldVault == address(0)) return address(0x1);
         return IERC4626(yieldVault).asset();
@@ -551,6 +587,8 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         p.paymentToken = address(0);
         p.escrowedAmount = budget;
         totalEscrowed[address(0)] += budget; // migration runbook: obligation tracked
+        // TRESTLE-2026-01 fix: scale milestone amounts to match discounted escrow
+        _scaleMilestonesForDutch(_id);
         uint256 excess = msg.value - budget;
         if (excess > 0) {
             (bool refund,) = msg.sender.call{value: excess}("");
@@ -575,6 +613,8 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         p.paymentToken = _token;
         p.escrowedAmount = budget;
         totalEscrowed[_token] += budget; // migration runbook: obligation tracked
+        // TRESTLE-2026-01 fix: scale milestone amounts to match discounted escrow
+        _scaleMilestonesForDutch(_id);
         if (_amount > budget) {
             IERC20(_token).safeTransfer(msg.sender, _amount - budget);
         }
@@ -590,6 +630,9 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         // E-6 fix: a client must not be able to accept their own project and
         // approve their own milestones (self-dealing).
         if (msg.sender == p.client) revert SelfAccept();
+        // TRESTLE-2026-01 invariant guard: reject if remaining milestones
+        // exceed escrow (should not happen after scaling, but defense-in-depth).
+        if (_remainingMilestoneAmount(p) > p.escrowedAmount) revert NoFunds();
 
         p.freelancer = msg.sender;
         p.status = ProjectStatus.InProgress;
@@ -603,6 +646,8 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (p.freelancer != address(0)) revert AlreadyAccepted();
         if (p.escrowedAmount == 0) revert NoFunds();
         if (msg.sender == p.client) revert SelfAccept(); // E-6 fix
+        // TRESTLE-2026-01 invariant guard
+        if (_remainingMilestoneAmount(p) > p.escrowedAmount) revert NoFunds();
 
         p.freelancer = msg.sender;
         p.status = ProjectStatus.InProgress;
@@ -645,6 +690,11 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
 
     function autoApproveMilestone(uint256 _id, uint256 _milestoneIndex) external nonReentrant {
         Project storage p = projects[_id];
+        // TRESTLE-2026-02 fix: the original `approveMilestone` checks InProgress,
+        // but this sibling path omitted the guard — letting a freelancer drain
+        // 99% of disputed escrow via the 14-day timeout while the dispute
+        // window is still open.
+        if (p.status != ProjectStatus.InProgress) revert WrongStatus();
         if (msg.sender != p.client && msg.sender != p.freelancer) revert NotParticipant();
         if (_milestoneIndex >= p.milestones.length) revert WrongMilestone();
         Milestone storage m = p.milestones[_milestoneIndex];

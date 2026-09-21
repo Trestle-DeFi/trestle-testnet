@@ -399,6 +399,85 @@ contract AuditPoCTest {
         vm.expectRevert();
         escrow.setFeeDistributor(address(0));
     }
+
+    // ─── TRESTLE-2026-02 (HIGH) FIXED: autoApproveMilestone reverts during Disputed
+    function test_autoApproveMilestoneRevertsDuringDispute() public {
+        FreelancerEscrow escrow = new FreelancerEscrow(TREASURY);
+        uint256 budget = 100 ether;
+        (string[] memory d, uint256[] memory a, uint256[] memory t) = _milestones(budget);
+        vm.prank(CLIENT_A);
+        escrow.createProjectFixed("P", "u", "g", "c", 30, budget, d, a, t);
+        vm.deal(CLIENT_A, 100 ether);
+        vm.prank(CLIENT_A);
+        escrow.fundProject{value: budget}(1);
+        vm.prank(FREELANCER);
+        escrow.acceptProject(1);
+        vm.prank(FREELANCER);
+        escrow.submitMilestone(1, 0, "hash");
+
+        // Open dispute — project moves to Disputed
+        vm.prank(CLIENT_A);
+        escrow.disputeProject(1);
+
+        // Advance past the 14-day milestone timeout
+        vm.warp(block.timestamp + 14 days);
+
+        // approveMilestone correctly reverts during Disputed
+        vm.prank(CLIENT_A);
+        vm.expectRevert();
+        escrow.approveMilestone(1, 0);
+
+        // TRESTLE-2026-02 FIX: autoApproveMilestone now also reverts during Disputed
+        vm.prank(FREELANCER);
+        vm.expectRevert();
+        escrow.autoApproveMilestone(1, 0);
+    }
+
+    // ─── TRESTLE-2026-01 (MEDIUM) FIXED: Dutch auction milestones scale to escrow
+    function test_dutchAuctionMilestonesScaleOnFunding() public {
+        FreelancerEscrow escrow = new FreelancerEscrow(TREASURY);
+        uint256 maxBudget = 100 ether;
+        uint256 reserveBudget = 10 ether;
+        uint256 duration = 7 days;
+
+        // Create Dutch auction with milestones summing to maxBudget
+        // Deadlines far in the future so they survive the warp past auction duration
+        string[] memory descs = new string[](2);
+        descs[0] = "Phase 1";
+        descs[1] = "Phase 2";
+        uint256[] memory amts = new uint256[](2);
+        amts[0] = 50 ether;
+        amts[1] = 50 ether;
+        uint256[] memory dls = new uint256[](2);
+        dls[0] = block.timestamp + duration + 30 days;
+        dls[1] = block.timestamp + duration + 60 days;
+
+        vm.prank(CLIENT_A);
+        escrow.createProjectDutch("D", "u", "g", "c", 90, maxBudget, reserveBudget, duration, descs, amts, dls);
+
+        // Wait for auction to decay to reserve
+        vm.warp(block.timestamp + duration + 1);
+
+        // Fund at reserve price (10 ETH)
+        vm.deal(CLIENT_A, 100 ether);
+        vm.prank(CLIENT_A);
+        escrow.fundProject{value: reserveBudget}(1);
+
+        vm.prank(FREELANCER);
+        escrow.acceptProject(1);
+
+        // Submit and approve milestone 0 — should succeed (no NoFunds revert)
+        vm.prank(FREELANCER);
+        escrow.submitMilestone(1, 0, "work");
+        vm.prank(CLIENT_A);
+        escrow.approveMilestone(1, 0); // would revert before the fix
+
+        // Submit and approve milestone 1
+        vm.prank(FREELANCER);
+        escrow.submitMilestone(1, 1, "work2");
+        vm.prank(CLIENT_A);
+        escrow.approveMilestone(1, 1); // completes the project
+    }
 }
 
 /// @dev Migration target that can receive native ETH.
