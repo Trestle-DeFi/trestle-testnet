@@ -38,7 +38,9 @@ describe("Trestle Protocol — Heavy Test Suite", function () {
     );
 
     const UserProfile = await ethers.getContractFactory("UserProfile");
-    userProfile = await UserProfile.deploy(await mockToken.getAddress());
+    userProfile = await UserProfile.deploy(await mockToken.getAddress(), deployer.address);
+    // Register the test deployer as a "platform" so it can fire the hooks.
+    await userProfile.setPlatformContract(deployer.address, true);
   });
 
   // ═══════════════════════════════════════════════════════════════════
@@ -58,7 +60,13 @@ describe("Trestle Protocol — Heavy Test Suite", function () {
 
     it("UserProfile: reverts on zero reviewToken", async function () {
       const UP = await ethers.getContractFactory("UserProfile");
-      await expect(UP.deploy(ethers.ZeroAddress)).to.be.revertedWithCustomError(UP, "ZeroAddress");
+      await expect(UP.deploy(ethers.ZeroAddress, deployer.address)).to.be.revertedWithCustomError(UP, "ZeroAddress");
+    });
+
+    it("UserProfile: reverts on zero attester", async function () {
+      const UP = await ethers.getContractFactory("UserProfile");
+      await expect(UP.deploy(await mockToken.getAddress(), ethers.ZeroAddress))
+        .to.be.revertedWithCustomError(UP, "ZeroAddress");
     });
 
     it("FeeDistributor: reverts on zero treasury", async function () {
@@ -733,66 +741,159 @@ describe("Trestle Protocol — Heavy Test Suite", function () {
   // ═══════════════════════════════════════════════════════════════════
 
   describe("UserProfile", function () {
+    // Fire platform hooks as the registered deployer-as-platform.
+    const markInteracted = async (addr) => userProfile.connect(deployer).markInteracted(addr);
+    const markDeal = async (a, b) => userProfile.connect(deployer).markDealComplete(a, b);
+
+    const setupProfile = async (signer, name = "Alice") => {
+      await markInteracted(signer.address);
+      await userProfile.connect(signer).setProfile(name, "ipfs://avatar", "Builder", "Earth", "solidity");
+    };
+
+    const setupBoth = async () => {
+      await setupProfile(user, "Alice");
+      await setupProfile(buyer, "Bob");
+      await markDeal(user.address, buyer.address);
+      await mockToken.connect(deployer).mint(buyer.address, ethers.parseEther("2"));
+    };
+
+    it("reverts setProfile without platform interaction", async function () {
+      await expect(userProfile.connect(user).setProfile("Alice", "", "", "", ""))
+        .to.be.revertedWithCustomError(userProfile, "NotInteracted");
+    });
+
+    it("reverts setProfile with empty name", async function () {
+      await markInteracted(user.address);
+      await expect(userProfile.connect(user).setProfile("", "", "", "", ""))
+        .to.be.revertedWithCustomError(userProfile, "EmptyName");
+    });
+
     it("set and get profile", async function () {
-      await userProfile.connect(user).setProfile("Alice", "ipfs://avatar", "Builder", "", "", "", "", "", "");
+      await setupProfile(user);
       const p = await userProfile.getProfile(user.address);
       expect(p.name).to.equal("Alice");
       expect(p.avatarURI).to.equal("ipfs://avatar");
+      expect(p.exists).to.equal(true);
+      expect(await userProfile.hasInteracted(user.address)).to.equal(true);
     });
 
-    it("allow empty profile (all fields optional)", async function () {
-      await userProfile.connect(user).setProfile("", "", "", "", "", "", "", "", "");
-      const p = await userProfile.getProfile(user.address);
-      expect(p.name).to.equal("");
+    it("add, list, and remove socials", async function () {
+      await setupProfile(user);
+      await userProfile.connect(user).addSocial("twitter", "https://twitter.com/alice");
+      await userProfile.connect(user).addSocial("github", "https://github.com/alice");
+      let socials = await userProfile.getSocials(user.address);
+      expect(socials.length).to.equal(2);
+
+      await userProfile.connect(user).removeSocial(0);
+      socials = await userProfile.getSocials(user.address);
+      expect(socials.length).to.equal(1);
+      expect(socials[0].platform).to.equal("github");
     });
 
-    it("submit review with token gate", async function () {
-      await mockToken.connect(deployer).mint(buyer.address, ethers.parseEther("2"));
-      await userProfile.connect(user).setProfile("Alice", "", "", "", "", "", "", "", "");
+    it("submit review with full gates (token + interaction + completed deal + profiles)", async function () {
+      await setupBoth();
       await userProfile.connect(buyer).submitReview(user.address, 5, "Great work!");
       expect(await userProfile.getReviewCount(user.address)).to.equal(1);
+      expect(await userProfile.positiveReviews(user.address)).to.equal(1);
+      expect(await userProfile.negativeReviews(user.address)).to.equal(0);
+    });
+
+    it("revert review without completed deal", async function () {
+      await setupProfile(user);
+      await setupProfile(buyer);
+      await mockToken.connect(deployer).mint(buyer.address, ethers.parseEther("2"));
+      await expect(userProfile.connect(buyer).submitReview(user.address, 5, "x"))
+        .to.be.revertedWithCustomError(userProfile, "NoCompletedDeal");
     });
 
     it("revert review without tokens", async function () {
-      await userProfile.connect(user).setProfile("Alice", "", "", "", "", "", "", "", "");
+      await setupProfile(user);
+      await setupProfile(buyer);
+      await markDeal(user.address, buyer.address);
       await expect(userProfile.connect(buyer).submitReview(user.address, 5, "x"))
         .to.be.revertedWithCustomError(userProfile, "InsufficientBalance");
     });
 
     it("revert self-review", async function () {
+      await setupProfile(user);
+      await markDeal(user.address, user.address);
       await mockToken.connect(deployer).mint(user.address, ethers.parseEther("2"));
-      await userProfile.connect(user).setProfile("Alice", "", "", "", "", "", "", "", "");
       await expect(userProfile.connect(user).submitReview(user.address, 5, "x"))
         .to.be.revertedWithCustomError(userProfile, "SelfReview");
     });
 
     it("revert review too soon (cooldown)", async function () {
-      await mockToken.connect(deployer).mint(user.address, ethers.parseEther("2"));
-      await mockToken.connect(deployer).mint(buyer.address, ethers.parseEther("2"));
-      await userProfile.connect(user).setProfile("Alice", "", "", "", "", "", "", "", "");
+      await setupBoth();
       await userProfile.connect(buyer).submitReview(user.address, 5, "first");
       await expect(userProfile.connect(buyer).submitReview(user.address, 5, "second"))
         .to.be.revertedWithCustomError(userProfile, "ReviewTooSoon");
     });
 
     it("revert invalid rating", async function () {
-      await mockToken.connect(deployer).mint(user.address, ethers.parseEther("2"));
+      await setupBoth();
       await expect(userProfile.connect(buyer).submitReview(user.address, 0, "x"))
         .to.be.revertedWithCustomError(userProfile, "InvalidRating");
       await expect(userProfile.connect(buyer).submitReview(user.address, 6, "x"))
         .to.be.revertedWithCustomError(userProfile, "InvalidRating");
     });
 
+    it("counts negative reviews and allows dispute → half weight → upheld zero", async function () {
+      await setupBoth();
+      // Second reviewer path: only one review/day per reviewer (global cooldown),
+      // so use a different reviewer (user reviews buyer back after deal).
+      await mockToken.connect(deployer).mint(user.address, ethers.parseEther("2"));
+      await userProfile.connect(user).submitReview(buyer.address, 2, "not great");
+      expect(await userProfile.negativeReviews(buyer.address)).to.equal(1);
+
+      // Target disputes the negative review.
+      await userProfile.connect(buyer).disputeReview(buyer.address, 0);
+      // Owner upholds → review weight zeroed.
+      await userProfile.connect(deployer).resolveDispute(buyer.address, 0, true);
+
+      // All of buyer's reviews upheld → review score 0.
+      expect(await userProfile.reviewScore(buyer.address)).to.equal(0);
+      expect(await userProfile.compositeScore(buyer.address)).to.equal(0);
+    });
+
     it("getReviews pagination", async function () {
-      await mockToken.connect(deployer).mint(buyer.address, ethers.parseEther("2"));
-      await userProfile.connect(user).setProfile("Alice", "", "", "", "", "", "", "", "");
-      for (let i = 0; i < 5; i++) {
+      await setupBoth();
+      await userProfile.connect(buyer).submitReview(user.address, 4, "review 0");
+      for (let i = 1; i < 3; i++) {
         await ethers.provider.send("evm_increaseTime", [86401]);
         await ethers.provider.send("evm_mine");
         await userProfile.connect(buyer).submitReview(user.address, 4, `review ${i}`);
       }
       const reviews = await userProfile.getReviews(user.address, 0, 3);
       expect(reviews.length).to.equal(3);
+    });
+
+    it("only platform contracts can fire hooks", async function () {
+      await expect(userProfile.connect(attacker).markInteracted(user.address))
+        .to.be.revertedWithCustomError(userProfile, "NotPlatform");
+    });
+
+    it("progress bar and composite score respond to profile + attestations", async function () {
+      await setupProfile(user);
+      const before = await userProfile.getProgress(user.address);
+      expect(Number(before)).to.be.greaterThan(0);
+
+      // Attest passport score 80 signed by attester (deployer).
+      const block = await ethers.provider.getBlock("latest");
+      const deadline = Number(block.timestamp) + 3600;
+      const nonce = await userProfile.attestationNonce(user.address);
+      const domain = { name: "Trestle UserProfile", version: "1", chainId: (await ethers.provider.getNetwork()).chainId, verifyingContract: await userProfile.getAddress() };
+      const types = { ScoreAttestation: [
+        { name: "user", type: "address" },
+        { name: "scoreType", type: "uint8" },
+        { name: "score", type: "uint8" },
+        { name: "nonce", type: "uint256" },
+        { name: "deadline", type: "uint256" },
+      ]};
+      const att = { user: user.address, scoreType: 0, score: 80, nonce, deadline };
+      const signature = await deployer.signTypedData(domain, types, att);
+      await userProfile.submitAttestation(att, signature);
+      expect(await userProfile.passportScore(user.address)).to.equal(80);
+      expect(await userProfile.compositeScore(user.address)).to.equal(20); // 80/4
     });
   });
 });

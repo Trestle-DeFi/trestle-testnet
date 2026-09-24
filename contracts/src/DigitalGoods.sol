@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./DutchAuctionLib.sol";
+import "./interfaces/IUserProfile.sol";
 
 contract DigitalGoods is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -45,6 +46,11 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
     mapping(uint256 => string) public deliveryHashes;
     mapping(address => bool) public allowedTokens;
 
+    /// @dev Optional UserProfile integration. address(0) = hooks skipped.
+    address public userProfile;
+
+    event UserProfileUpdated(address indexed userProfile);
+
     event Listed(uint256 indexed id, address indexed seller, PricingMode pricing, uint256 price, string metadataURI, string category);
     event Purchased(uint256 indexed id, address indexed buyer, uint256 paid);
     event DeliverySubmitted(uint256 indexed id, string deliveryHash);
@@ -74,6 +80,11 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (_token == address(0)) revert ZeroAddress();
         allowedTokens[_token] = _allowed;
         emit TokenAllowed(_token, _allowed);
+    }
+
+    function setUserProfile(address _userProfile) external onlyOwner {
+        userProfile = _userProfile;
+        emit UserProfileUpdated(_userProfile);
     }
 
     function setTreasury(address _treasury) external onlyOwner {
@@ -108,6 +119,14 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
     ) external returns (uint256) {
         DutchAuctionLib.validate(_startPrice, _reservePrice, _duration);
         return _list(_metadataURI, _description, _tags, _isNFT, PricingMode.DutchAuction, _startPrice, _reservePrice, _duration, block.timestamp, _category, _deliveryURI);
+    }
+
+    function _notifyInteracted(address user) private {
+        if (userProfile != address(0)) IUserProfile(userProfile).markInteracted(user);
+    }
+
+    function _notifyDealComplete(address a, address b) private {
+        if (userProfile != address(0)) IUserProfile(userProfile).markDealComplete(a, b);
     }
 
     function _list(
@@ -146,6 +165,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
             deliveryURI: _deliveryURI
         });
         emit Listed(id, msg.sender, _pricing, _price, _metadataURI, _category);
+        _notifyInteracted(msg.sender);
         return id;
     }
 
@@ -178,6 +198,8 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         }
 
         emit Purchased(_id, msg.sender, price);
+        _notifyInteracted(msg.sender);
+        _notifyInteracted(l.seller);
     }
 
     function buyWithToken(uint256 _id, address _token, uint256 _amount) external nonReentrant {
@@ -201,6 +223,8 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         }
 
         emit Purchased(_id, msg.sender, price);
+        _notifyInteracted(msg.sender);
+        _notifyInteracted(l.seller);
     }
 
     function submitDelivery(uint256 _id, string calldata _deliveryHash) external nonReentrant {
@@ -219,6 +243,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         l.deliveryConfirmed = true;
         _releaseToSeller(_id);
         emit DeliveryConfirmed(_id);
+        _notifyDealComplete(l.buyer, l.seller);
     }
 
     // H-2/A-4 fix: add nonReentrant for consistency with every other
@@ -244,6 +269,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (toSeller) {
             l.deliveryConfirmed = true;
             _releaseToSeller(_id);
+            _notifyDealComplete(l.buyer, l.seller);
         } else {
             l.status = ListingStatus.Refunded;
             _releaseToBuyer(_id);
@@ -268,6 +294,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         } else {
             l.deliveryConfirmed = true;
             _releaseToSeller(_id);
+            _notifyDealComplete(l.buyer, l.seller);
         }
         emit Resolved(_id, _toBuyer);
     }

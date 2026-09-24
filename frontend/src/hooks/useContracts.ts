@@ -51,11 +51,24 @@ const RWA_ABI = [
 ] as const;
 
 const USER_PROFILE_ABI = [
-  { inputs: [{ name: "_name", type: "string" }, { name: "_avatarURI", type: "string" }, { name: "_bio", type: "string" }, { name: "_github", type: "string" }, { name: "_website", type: "string" }, { name: "_location", type: "string" }, { name: "_skills", type: "string" }, { name: "_twitter", type: "string" }, { name: "_telegram", type: "string" }], name: "setProfile", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "_name", type: "string" }, { name: "_avatarURI", type: "string" }, { name: "_bio", type: "string" }, { name: "_location", type: "string" }, { name: "_skills", type: "string" }], name: "setProfile", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ name: "_user", type: "address" }, { name: "_rating", type: "uint8" }, { name: "_comment", type: "string" }], name: "submitReview", outputs: [], stateMutability: "nonpayable", type: "function" },
-  { inputs: [{ name: "_user", type: "address" }], name: "getProfile", outputs: [{ name: "name", type: "string" }, { name: "avatarURI", type: "string" }, { name: "bio", type: "string" }, { name: "github", type: "string" }, { name: "website", type: "string" }, { name: "location", type: "string" }, { name: "skills", type: "string" }, { name: "twitter", type: "string" }, { name: "telegram", type: "string" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "_user", type: "address" }], name: "getReviewCount", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "_user", type: "address" }, { name: "_offset", type: "uint256" }, { name: "_limit", type: "uint256" }], name: "getReviews", outputs: [{ name: "tuple[]", type: "tuple[]", components: [{ name: "rating", type: "uint8" }, { name: "comment", type: "string" }, { name: "timestamp", type: "uint256" }] }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "getProfile", outputs: [{ name: "", type: "tuple", components: [{ name: "name", type: "string" }, { name: "avatarURI", type: "string" }, { name: "bio", type: "string" }, { name: "location", type: "string" }, { name: "skills", type: "string" }, { name: "exists", type: "bool" }] }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "getReviewCount", outputs: [{ name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }, { name: "offset", type: "uint256" }, { name: "limit", type: "uint256" }], name: "getReviews", outputs: [{ name: "", type: "tuple[]", components: [{ name: "reviewer", type: "address" }, { name: "rating", type: "uint8" }, { name: "comment", type: "string" }, { name: "timestamp", type: "uint256" }, { name: "disputed", type: "bool" }, { name: "resolved", type: "bool" }, { name: "upheld", type: "bool" }] }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "getSocials", outputs: [{ name: "", type: "tuple[]", components: [{ name: "platform", type: "string" }, { name: "url", type: "string" }] }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "platform", type: "string" }, { name: "url", type: "string" }], name: "addSocial", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "index", type: "uint256" }], name: "removeSocial", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "hasInteracted", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "a", type: "address" }, { name: "b", type: "address" }], name: "hasCompletedDeal", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "reviewScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "compositeScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "getProgress", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "getReviewBreakdown", outputs: [{ name: "pos", type: "uint8" }, { name: "neg", type: "uint8" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "passportScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "biometricVerified", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "thirdPartyScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }, { name: "index", type: "uint256" }], name: "disputeReview", outputs: [], stateMutability: "nonpayable", type: "function" },
 ] as const;
 
 function getChainKey(chainId: number): ChainKey | null {
@@ -150,8 +163,14 @@ export function useContracts() {
     userProfileReady: isCorrectChain,
     userProfileAddr: userProfile,
     userProfileABI: USER_PROFILE_ABI,
-    setProfile: (name: string, avatarURI: string, bio: string, github: string, website: string, location: string, skills: string, twitter: string, telegram: string) =>
-      write({ abi: USER_PROFILE_ABI, address: userProfile, functionName: "setProfile", args: [name, avatarURI, bio, github, website, location, skills, twitter, telegram] } as any),
+    setProfile: (name: string, avatarURI: string, bio: string, location: string, skills: string) =>
+      write({ abi: USER_PROFILE_ABI, address: userProfile, functionName: "setProfile", args: [name, avatarURI, bio, location, skills] } as any),
+    addSocial: (platform: string, url: string) =>
+      write({ abi: USER_PROFILE_ABI, address: userProfile, functionName: "addSocial", args: [platform, url] } as any),
+    removeSocial: (index: number) =>
+      write({ abi: USER_PROFILE_ABI, address: userProfile, functionName: "removeSocial", args: [BigInt(index)] } as any),
+    disputeReview: (user: Address, index: number) =>
+      write({ abi: USER_PROFILE_ABI, address: userProfile, functionName: "disputeReview", args: [user, BigInt(index)] } as any),
     submitReview: (user: Address, rating: number, comment: string) =>
       write({ abi: USER_PROFILE_ABI, address: userProfile, functionName: "submitReview", args: [user, rating, comment] } as any),
 

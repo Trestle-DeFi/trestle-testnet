@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./DutchAuctionLib.sol";
 import "./interfaces/IERC4626.sol";
+import "./interfaces/IUserProfile.sol";
 
 contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -95,6 +96,11 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     mapping(address => uint256) public totalEscrowed;
     mapping(address => bool) public allowedTokens;
 
+    /// @dev Optional UserProfile integration. address(0) = hooks skipped.
+    address public userProfile;
+
+    event UserProfileUpdated(address indexed userProfile);
+
     event ProjectCreated(uint256 indexed id, address indexed client, string title, uint256 budget);
     event ProjectFunded(uint256 indexed id, address indexed client, uint256 amount);
     event ProjectAccepted(uint256 indexed id, address indexed freelancer);
@@ -154,6 +160,11 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         treasury = _treasury;
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(DISPUTE_AGENT_ROLE, msg.sender);
+    }
+
+    function setUserProfile(address _userProfile) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        userProfile = _userProfile;
+        emit UserProfileUpdated(_userProfile);
     }
 
     function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -233,6 +244,14 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (totalCheck != _totalBudget) revert BudgetTooLow();
     }
 
+    function _notifyInteracted(address user) private {
+        if (userProfile != address(0)) IUserProfile(userProfile).markInteracted(user);
+    }
+
+    function _notifyDealComplete(address a, address b) private {
+        if (userProfile != address(0)) IUserProfile(userProfile).markDealComplete(a, b);
+    }
+
     function _approveMilestoneLogic(uint256 _id, uint256 _milestoneIndex) private {
         Project storage p = projects[_id];
         Milestone storage m = p.milestones[_milestoneIndex];
@@ -271,6 +290,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
                 if (remYield > 0) _distributeYield(_id, p.paymentToken, remYield);
             }
             emit ProjectCompleted(_id);
+            _notifyDealComplete(p.client, p.freelancer);
         }
     }
 
@@ -414,6 +434,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
             p.milestones.push(Milestone(_milestoneDescriptions[i], _milestoneAmounts[i], _milestoneDeadlines[i], MilestoneStatus.Pending, 0, ""));
         }
         emit ProjectCreated(id, msg.sender, _title, _totalBudget);
+        _notifyInteracted(msg.sender);
         return id;
     }
 
@@ -453,6 +474,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
             p.milestones.push(Milestone(_milestoneDescriptions[i], _milestoneAmounts[i], _milestoneDeadlines[i], MilestoneStatus.Pending, 0, ""));
         }
         emit ProjectCreated(id, msg.sender, _title, _maxBudget);
+        _notifyInteracted(msg.sender);
         return id;
     }
 
@@ -487,6 +509,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
             g.milestones.push(GigMilestone(_milestoneDescriptions[i], _milestoneAmounts[i], _milestoneDeadlines[i]));
         }
         emit GigCreated(id, msg.sender, _title, _price);
+        _notifyInteracted(msg.sender);
         return id;
     }
 
@@ -563,6 +586,8 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         emit GigHired(_gigId, id, msg.sender);
         emit ProjectCreated(id, msg.sender, g.title, g.price);
         emit ProjectAccepted(id, g.freelancer);
+        _notifyInteracted(msg.sender);
+        _notifyInteracted(g.freelancer);
         _depositToVault(id);
         return id;
     }
@@ -637,6 +662,8 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         p.freelancer = msg.sender;
         p.status = ProjectStatus.InProgress;
         emit ProjectAccepted(_id, msg.sender);
+        _notifyInteracted(msg.sender);
+        _notifyInteracted(p.client);
     }
 
     function applyAndAcceptDutch(uint256 _id) external nonReentrant {
@@ -652,6 +679,8 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         p.freelancer = msg.sender;
         p.status = ProjectStatus.InProgress;
         emit ProjectAccepted(_id, msg.sender);
+        _notifyInteracted(msg.sender);
+        _notifyInteracted(p.client);
     }
 
     function submitMilestone(uint256 _id, uint256 _milestoneIndex, string calldata _deliveryHash) external onlyFreelancer(_id) nonReentrant {
