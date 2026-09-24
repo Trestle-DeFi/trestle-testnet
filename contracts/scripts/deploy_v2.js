@@ -100,11 +100,19 @@ async function main() {
   // 5. UserProfile
   console.log("[5/7] Deploying UserProfile...");
   const UserProfile = await hre.ethers.getContractFactory("UserProfile");
-  const userProfile = await UserProfile.deploy(deployer.address);
+  const userProfile = await UserProfile.deploy(deployed.govToken, deployer.address);
   await userProfile.waitForDeployment();
   deployed.userProfile = await userProfile.getAddress();
-  toVerify.push({ name: "UserProfile", addr: deployed.userProfile, args: [deployer.address] });
+  toVerify.push({ name: "UserProfile", addr: deployed.userProfile, args: [deployed.govToken, deployer.address] });
   console.log("  ->", deployed.userProfile);
+
+  // Post-deploy hook wiring
+  console.log("  Wiring UserProfile hooks...");
+  await (await userProfile.setPlatformContract(deployed.digitalGoods, true)).wait();
+  await (await userProfile.setPlatformContract(deployed.freelancerEscrow, true)).wait();
+  await (await digitalGoods.setUserProfile(deployed.userProfile)).wait();
+  await (await freelancerEscrow.setUserProfile(deployed.userProfile)).wait();
+  console.log("  -> hooks connected to DigitalGoods & FreelancerEscrow");
 
   // 6. Mock Stablecoins
   console.log("[6/7] Deploying Mock Stablecoins...");

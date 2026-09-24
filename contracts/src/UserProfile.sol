@@ -102,8 +102,8 @@ contract UserProfile is Ownable, EIP712 {
     mapping(address => Review[]) private _reviews;
     mapping(address => mapping(address => uint256)) public lastReviewTime;
     mapping(address => uint256) public lastGlobalReview;
-    mapping(address => uint8) public positiveReviews;
-    mapping(address => uint8) public negativeReviews;
+    mapping(address => uint32) public positiveReviews;
+    mapping(address => uint32) public negativeReviews;
     mapping(address => uint256) public reviewsReceivedToday;
     mapping(address => uint256) public lastReviewDay;
 
@@ -346,13 +346,9 @@ contract UserProfile is Ownable, EIP712 {
         _reviews[_user].push(Review(msg.sender, _rating, _comment, block.timestamp, false, false, false));
 
         if (_rating >= 4) {
-            unchecked {
-                positiveReviews[_user]++;
-            }
+            positiveReviews[_user]++;
         } else {
-            unchecked {
-                negativeReviews[_user]++;
-            }
+            negativeReviews[_user]++;
         }
 
         emit ReviewSubmitted(msg.sender, _user, _rating, _comment);
@@ -382,6 +378,11 @@ contract UserProfile is Ownable, EIP712 {
         if (r.resolved) revert AlreadyDisputed();
         r.resolved = true;
         r.upheld = upheld;
+        if (upheld) {
+            // Dispute upheld: review weight zeroed in reviewScore — keep the
+            // cached breakdown in sync (only negative reviews are disputable).
+            negativeReviews[user]--;
+        }
         emit ReviewDisputeResolved(user, index, upheld);
     }
 
@@ -403,7 +404,7 @@ contract UserProfile is Ownable, EIP712 {
         return result;
     }
 
-    function getReviewBreakdown(address user) external view returns (uint8 pos, uint8 neg) {
+    function getReviewBreakdown(address user) external view returns (uint32 pos, uint32 neg) {
         return (positiveReviews[user], negativeReviews[user]);
     }
 

@@ -6,30 +6,30 @@ const hre = require("hardhat");
 // Existing addresses below must match frontend/src/config/contracts.ts.
 const EXISTING = {
   baseSepolia: {
-    govToken: "0x50915a301fF73278B3eaC09B42301abbC866F1Dc",
-    mockUSDC: "0xfe50dA41BfC13e99E9276149D0b534609C39633E",
-    mockUSDT: "0x635Ab939A2997eFDB42AD38F6A4919d8ae45b912",
+    govToken: "0xc550F40566C2aFEe6980aC3d64b9B3A2A0B8b914",
+    mockUSDC: "0x6A3d2890f93e67BB20c826DA9536AD863584Cd5E",
+    mockUSDT: "0x0000000000000000000000000000000000000000",
   },
   arbitrumSepolia: {
-    govToken: "0xA410fE4c70A624B9F8c1f65309f4FeFc1c6904E0",
-    mockUSDC: "0xe5665d1D2F180D27d328acCBB83f5fBE32A6666A",
-    mockUSDT: "0x1a112d7D350976A7b5015868F4DF3bdC8A46570d",
+    govToken: "0x2Ad9fFCBC6453B2b7A458bD80747c202F188606D",
+    mockUSDC: "0xC36C239D0b3144015178727f939e0766Bf71D816",
+    mockUSDT: "0x0000000000000000000000000000000000000000",
   },
   amoy: {
-    govToken: "0x81C11612df53Bf2564CFDEc7C7E11407db6E10Ce",
-    mockUSDC: "0x6D6C679279f5C680e5a6ef33306F2e9A78577DCa",
-    mockUSDT: "0x58E3B6f2eFD7F3ee4afe98A754e155DBE9052513",
+    govToken: "0x7f411bA9824513a95C591A061F97A0A375B2cB71",
+    mockUSDC: "0xBD551EE22321B500AB171885eb77574943aB65E1",
+    mockUSDT: "0x0000000000000000000000000000000000000000",
   },
 };
 
 const CHAINLINK_FEEDS = {
-  amoy: "0x001382149eBa3441043c1c66972b4772963f5D43", // POL/USD
-  arbitrumSepolia: "0x26dA680D98e805D54f0934f46b4669149c14d1cA", // ETH/USD
-  baseSepolia: "0x4Adc67696BA383F43dD60a9e78F2C97F4FcF617B", // ETH/USD
+  amoy: "0x001382149eBa3441043c1c66972b4772963f5D43", // ETH/USD — sunset (reverts on all calls)
+  arbitrumSepolia: "0x26dA680D98e805D54f0934f46b4669149c14d1cA", // ETH/USD — no code (dead)
+  baseSepolia: "0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1", // ETH/USD — live
 };
 
 const MANUAL_PRICES = {
-  amoy: 200000000n, // $0.20 POL/USD (8 decimals)
+  amoy: 20000000n, // $0.20 POL/USD (8 decimals)
   arbitrumSepolia: 300000000000n, // $3000 ETH/USD (8 decimals)
   baseSepolia: 300000000000n, // $3000 ETH/USD (8 decimals)
 };
@@ -60,9 +60,13 @@ async function main() {
   console.log("\nDigitalRWA deployed:", addr);
   console.log(">>> UPDATE frontend/src/config/contracts.ts digitalRWA + READMEs + STATUS.md <<<\n");
 
-  // USDT holder-gating whitelist
-  await rwa.setWhitelistToken(cfg.mockUSDT, hre.ethers.parseUnits("1000", 18));
-  console.log("Whitelist: USDC(1000, constructor) + USDT(1000) set");
+  // USDT holder-gating whitelist (skipped while mockUSDT is not deployed)
+  if (cfg.mockUSDT !== hre.ethers.ZeroAddress) {
+    await rwa.setWhitelistToken(cfg.mockUSDT, hre.ethers.parseUnits("1000", 18));
+    console.log("Whitelist: USDC(1000, constructor) + USDT(1000) set");
+  } else {
+    console.log("Whitelist: USDC(1000, constructor); USDT skipped (not deployed)");
+  }
 
   // Price
   try {

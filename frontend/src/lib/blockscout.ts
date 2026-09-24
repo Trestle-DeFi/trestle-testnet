@@ -146,7 +146,7 @@ export function rpcUrl(chainId: number) {
   for (const config of Object.values(CHAIN_CONFIG)) {
     if (config.id === chainId) return config.rpc;
   }
-  return "https://rpc-amoy.polygon.technology/";
+  return "https://polygon-amoy.drpc.org";
 }
 
 export function explorerUrl(chainId?: number) {

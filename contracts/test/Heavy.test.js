@@ -151,7 +151,7 @@ describe("Trestle Protocol — Heavy Test Suite", function () {
     });
 
     it("revert setSplitBps with invalid split", async function () {
-      await expect(feeDistributor.connect(deployer).setSplitBps(3000, 3000))
+      await expect(feeDistributor.connect(deployer).setSplitBps(6000, 5000))
         .to.be.revertedWithCustomError(feeDistributor, "InvalidSplit");
     });
 

@@ -7,7 +7,7 @@ export const projectId = "1b490e80a759ad50a260cae875595bad";
 
 const AMOY_RPC = [
   "https://polygon-amoy.drpc.org",
-  "https://rpc-amoy.polygon.technology/",
+  "https://polygon-amoy-bor-rpc.publicnode.com",
 ];
 
 const BASE_SEPOLIA_RPC = [

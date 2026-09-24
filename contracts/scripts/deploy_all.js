@@ -5,31 +5,37 @@ const CHAIN_CONFIG = {
     name: "Polygon Amoy",
     nativeSymbol: "POL",
     chainlinkETHUSD: "0x001382149eBa3441043c1c66972b4772963f5D43",
+    manualPrice: 20000000n, // $0.20 POL/USD (8 decimals) — feed deprecated
   },
   137: {
     name: "Polygon PoS",
     nativeSymbol: "POL",
     chainlinkETHUSD: "0xAb550441a7744cDa2363c984ea79aD0137c8Ea85",
+    manualPrice: 20000000n,
   },
   42161: {
     name: "Arbitrum One",
     nativeSymbol: "ETH",
     chainlinkETHUSD: "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612",
+    manualPrice: 300000000000n, // $3000 ETH/USD
   },
   421614: {
     name: "Arbitrum Sepolia",
     nativeSymbol: "ETH",
     chainlinkETHUSD: "0x26dA680D98e805D54f0934f46b4669149c14d1cA",
+    manualPrice: 300000000000n,
   },
   84532: {
     name: "Base Sepolia",
     nativeSymbol: "ETH",
     chainlinkETHUSD: "0x4aDC67696bA383F43DD60A9e78F2C97Fbbfc7cb1",
+    manualPrice: 300000000000n,
   },
   8453: {
     name: "Base Mainnet",
     nativeSymbol: "ETH",
     chainlinkETHUSD: "0x71041dddcd33129D58Ed70eD42F29bD502dCbE63",
+    manualPrice: 300000000000n,
   },
 };
 
@@ -102,7 +108,7 @@ async function main() {
   // 5. UserProfile
   console.log("[5/6] UserProfile...");
   const UserProfile = await hre.ethers.getContractFactory("UserProfile");
-  const userProfile = await UserProfile.deploy(deployer.address);
+  const userProfile = await UserProfile.deploy(deployed.govToken, deployer.address);
   await userProfile.waitForDeployment();
   deployed.userProfile = await userProfile.getAddress();
   console.log("  ->", deployed.userProfile);
@@ -115,6 +121,34 @@ async function main() {
   await feeDistributor.waitForDeployment();
   deployed.feeDistributor = await feeDistributor.getAddress();
   console.log("  ->", deployed.feeDistributor);
+
+  // Post-deploy hook wiring
+  console.log("\n[Wiring hooks]...");
+  await (await userProfile.setPlatformContract(deployed.digitalGoods, true)).wait();
+  await (await userProfile.setPlatformContract(deployed.freelancerEscrow, true)).wait();
+  await (await digitalGoods.setUserProfile(deployed.userProfile)).wait();
+  await (await freelancerEscrow.setUserProfile(deployed.userProfile)).wait();
+  console.log("  -> UserProfile hooks connected to DigitalGoods & FreelancerEscrow");
+
+  // Post-deploy configuration (same steps deploy.js performs)
+  console.log("\n[Post-deploy configuration]...");
+  await (await digitalGoods.setTokenAllowed(deployed.mockUSDC, true)).wait();
+  console.log("  DigitalGoods: USDC allowed");
+  await (await freelancerEscrow.setTokenAllowed(deployed.mockUSDC, true)).wait();
+  await (await freelancerEscrow.setFeeDistributor(deployed.feeDistributor)).wait();
+  console.log("  FreelancerEscrow: USDC allowed, linked to FeeDistributor");
+  try {
+    await (await digitalRWA.syncPrice()).wait();
+    const synced = await digitalRWA.currentPrice();
+    if (synced > 0n) {
+      console.log("  DigitalRWA: price synced =", hre.ethers.formatUnits(synced, 8));
+    } else {
+      throw new Error("feed returned 0");
+    }
+  } catch (e) {
+    await (await digitalRWA.setManualPrice(chain.manualPrice)).wait();
+    console.log("  DigitalRWA: manual price set =", hre.ethers.formatUnits(await digitalRWA.currentPrice(), 8));
+  }
 
   console.log("\n============================================");
   console.log("DEPLOYED —", chain.name);

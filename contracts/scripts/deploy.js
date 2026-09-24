@@ -20,7 +20,7 @@ async function main() {
   // NOTE (2026-08): Chainlink has deprecated/sunset these testnet aggregators —
   // syncPrice() will fail. Post-deploy below falls back to admin setManualPrice().
   const MANUAL_PRICES = {
-    amoy: 200000000n, // $0.20 POL/USD (8 decimals)
+    amoy: 20000000n, // $0.20 POL/USD (8 decimals)
     arbitrumSepolia: 300000000000n, // $3000 ETH/USD (8 decimals)
     baseSepolia: 300000000000n, // $3000 ETH/USD (8 decimals)
   };
@@ -63,10 +63,18 @@ async function main() {
   // 5. User Profile
   console.log("[5/7] Deploying UserProfile...");
   const UserProfile = await hre.ethers.getContractFactory("UserProfile");
-  const userProfile = await UserProfile.deploy(deployer.address);
+  const userProfile = await UserProfile.deploy(deployed.govToken, deployer.address);
   await userProfile.waitForDeployment();
   deployed.userProfile = await userProfile.getAddress();
   console.log("  ->", deployed.userProfile);
+
+  // Post-deploy hook wiring
+  console.log("  Wiring UserProfile hooks...");
+  await (await userProfile.setPlatformContract(deployed.digitalGoods, true)).wait();
+  await (await userProfile.setPlatformContract(deployed.freelancerEscrow, true)).wait();
+  await (await digitalGoods.setUserProfile(deployed.userProfile)).wait();
+  await (await freelancerEscrow.setUserProfile(deployed.userProfile)).wait();
+  console.log("  -> hooks connected to DigitalGoods & FreelancerEscrow");
 
   // 6. Mock Stablecoins
   console.log("[6/7] Deploying Mock Stablecoins...");
@@ -163,7 +171,7 @@ async function main() {
     await verify("FeeDistributor", deployed.feeDistributor, [TREASURY, BUYBACK_BURN]);
     await verify("DigitalGoods", deployed.digitalGoods, [TREASURY]);
     await verify("FreelancerEscrow", deployed.freelancerEscrow, [TREASURY]);
-    await verify("UserProfile", deployed.userProfile, [deployer.address]);
+    await verify("UserProfile", deployed.userProfile, [deployed.govToken, deployer.address]);
     await verify("MockERC20", deployed.mockUSDC, ["Mock USDC", "USDC", 6, hre.ethers.parseUnits("1000000", 6)]);
     await verify("MockERC20", deployed.mockUSDT, ["Mock USDT", "USDT", 6, hre.ethers.parseUnits("1000000", 6)]);
     await verify("MockERC20", deployed.mockXNOBT, ["Mock xNOBT", "xNOBT", 18, GOV_SUPPLY]);

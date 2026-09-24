@@ -64,7 +64,7 @@ const USER_PROFILE_ABI = [
   { inputs: [{ name: "user", type: "address" }], name: "reviewScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "user", type: "address" }], name: "compositeScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "user", type: "address" }], name: "getProgress", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
-  { inputs: [{ name: "user", type: "address" }], name: "getReviewBreakdown", outputs: [{ name: "pos", type: "uint8" }, { name: "neg", type: "uint8" }], stateMutability: "view", type: "function" },
+  { inputs: [{ name: "user", type: "address" }], name: "getReviewBreakdown", outputs: [{ name: "pos", type: "uint32" }, { name: "neg", type: "uint32" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "user", type: "address" }], name: "passportScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "user", type: "address" }], name: "biometricVerified", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
   { inputs: [{ name: "user", type: "address" }], name: "thirdPartyScore", outputs: [{ name: "", type: "uint8" }], stateMutability: "view", type: "function" },

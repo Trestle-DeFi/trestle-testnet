@@ -569,6 +569,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
 
         uint256 mlen = g.milestones.length;
         for (uint256 i; i < mlen; i++) {
+            if (g.milestones[i].deadline <= block.timestamp) revert PastDeadline();
             p.milestones.push(Milestone(
                 g.milestones[i].description,
                 g.milestones[i].amount,
@@ -688,7 +689,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (p.status != ProjectStatus.InProgress) revert WrongStatus();
         if (_milestoneIndex >= p.milestones.length) revert WrongMilestone();
         Milestone storage m = p.milestones[_milestoneIndex];
-        if (m.status != MilestoneStatus.Pending) revert WrongMilestone();
+        if (m.status != MilestoneStatus.Pending && m.status != MilestoneStatus.Rejected) revert WrongMilestone();
         if (block.timestamp > m.deadline) revert WrongMilestone();
 
         m.status = MilestoneStatus.Submitted;

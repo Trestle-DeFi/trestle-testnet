@@ -53,11 +53,10 @@ contract FeeDistributor is Ownable, ReentrancyGuard {
     }
 
     /// @notice Set the yield/treasury split in basis points (L-4).
-    /// @dev The buyback share is implicitly `BPS - _yieldBps - _treasuryBps`. Because
-    ///      the sum is required to equal exactly `BPS`, the remainder is exact —
-    ///      no rounding dust is possible; this is a documentation concern only.
+    /// @dev The buyback share is implicitly `BPS - _yieldBps - _treasuryBps`.
+    ///      The sum must not exceed BPS.
     function setSplitBps(uint256 _yieldBps, uint256 _treasuryBps) external onlyOwner {
-        if (_yieldBps + _treasuryBps != BPS) revert InvalidSplit();
+        if (_yieldBps + _treasuryBps > BPS) revert InvalidSplit();
         yieldBps = _yieldBps;
         treasuryBps = _treasuryBps;
         emit SplitUpdated(_yieldBps, _treasuryBps);
