@@ -5,6 +5,8 @@ import { getPublicClient } from 'wagmi/actions';
 import { formatUnits, parseUnits, type Address } from "viem";
 import { useContracts } from "../hooks/useContracts";
 import { config } from "../config/web3";
+import { createLocalMetadataURI } from "../lib/ipfsFallback";
+import { useIpfsTitle } from "../hooks/useIpfs";
 import Freelance from "./Freelance";
 import QRCode from "../components/QRCode";
 import ErrorBanner from "../components/ErrorBanner";
@@ -65,12 +67,16 @@ function ListingCard({
 }) {
   const isBuyingThis = buyingId === Number(l.id);
   const label = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace("-", " ");
+  // Zero-API: attempt to resolve an IPFS/Arweave `metadataURI` into a human
+  // title. Falls back to the on-chain name extraction if gateway fetch fails.
+  const { title: resolvedTitle } = useIpfsTitle(l.metadataURI);
+  const displayName = (resolvedTitle && resolvedTitle !== "Untitled" ? resolvedTitle : listingName(l.metadataURI)) || "Untitled";
   return (
     <div key={Number(l.id)} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition flex flex-col">
       <div className="flex items-start justify-between mb-3">
         <div className="min-w-0">
           <span className="text-xs text-gray-400">#{Number(l.id)}</span>
-          <p className="text-sm font-medium text-gray-900 mt-0.5 truncate">{listingName(l.metadataURI)}</p>
+          <p className="text-sm font-medium text-gray-900 mt-0.5 truncate">{displayName}</p>
         </div>
         <div className="flex gap-1.5 shrink-0">
           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-gray-500">{label(l.category)}</span>
@@ -372,7 +378,28 @@ export default function Marketplace() {
 
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Metadata URI</label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs text-gray-500">Metadata URI</label>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const res = await createLocalMetadataURI({
+                            title: description.slice(0, 30) || "Item Metadata",
+                            description: description || "Trestle Marketplace Item",
+                            category,
+                            tags: tags.split(",").map(s => s.trim()).filter(Boolean),
+                          });
+                          setMetaURI(res.uri);
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                      className="text-[11px] text-emerald-600 hover:underline"
+                    >
+                      Generate Hash URI
+                    </button>
+                  </div>
                   <input value={metaURI} onChange={e => setMetaURI(e.target.value)} placeholder="ipfs://..." className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
                 </div>
                 <div>

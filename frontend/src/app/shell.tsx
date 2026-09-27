@@ -12,11 +12,12 @@ import Footer from "@/components/Footer";
 import Icon from "@/components/Icon";
 
 const NAV_TABS = [
-  { href: "/", label: "Dashboard", icon: "\uD83D\uDCCA" },
-  { href: "/marketplace", label: "Market", icon: "\uD83C\uDFEA" },
-  { href: "/rwa", label: "RWA", icon: "\uD83C\uDFDB\uFE0F" },
-  { href: "/profile", label: "Profile", icon: "\uD83D\uDC64" },
-  { href: "/faucet", label: "Faucet", icon: "\uD83D\uDCA7" },
+  { href: "/", label: "Dashboard", icon: "📊" },
+  { href: "/marketplace", label: "Market", icon: "🏪" },
+  { href: "/freelance", label: "Freelance", icon: "💼" },
+  { href: "/rwa", label: "RWA", icon: "🏛️" },
+  { href: "/profile", label: "Profile", icon: "👤" },
+  { href: "/faucet", label: "Faucet", icon: "💧" },
 ];
 
 const CHAIN_ICONS: Record<number, string> = {

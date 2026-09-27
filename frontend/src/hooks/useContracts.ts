@@ -30,6 +30,10 @@ const FREELANCER_ESCROW_ABI = [
   { inputs: [{ name: "gigId", type: "uint256" }], name: "hireGig", outputs: [{ name: "", type: "uint256" }], stateMutability: "payable", type: "function" },
   { inputs: [{ name: "id", type: "uint256" }, { name: "milestoneIndex", type: "uint256" }, { name: "deliveryHash", type: "string" }], name: "submitMilestone", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ name: "id", type: "uint256" }, { name: "milestoneIndex", type: "uint256" }], name: "approveMilestone", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "id", type: "uint256" }], name: "disputeProject", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "id", type: "uint256" }, { name: "toFreelancer", type: "bool" }], name: "resolveDispute", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "id", type: "uint256" }], name: "autoResolveDispute", outputs: [], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ name: "role", type: "bytes32" }, { name: "account", type: "address" }], name: "hasRole", outputs: [{ name: "", type: "bool" }], stateMutability: "view", type: "function" },
 ] as const;
 
 const RWA_ABI = [
@@ -147,6 +151,12 @@ export function useContracts() {
       write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "submitMilestone", args: [BigInt(projectId), BigInt(milestoneIndex), deliveryHash] } as any),
     approveMilestone: (projectId: number, milestoneIndex: number) =>
       write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "approveMilestone", args: [BigInt(projectId), BigInt(milestoneIndex)] } as any),
+    disputeProject: (projectId: number) =>
+      write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "disputeProject", args: [BigInt(projectId)] } as any),
+    resolveDispute: (projectId: number, toFreelancer: boolean) =>
+      write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "resolveDispute", args: [BigInt(projectId), toFreelancer] } as any),
+    autoResolveDispute: (projectId: number) =>
+      write({ abi: FREELANCER_ESCROW_ABI, address: freelancerEscrow, functionName: "autoResolveDispute", args: [BigInt(projectId)] } as any),
 
     rwaReady: isCorrectChain,
     rwaAddr: digitalRWA,
