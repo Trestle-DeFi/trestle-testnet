@@ -87,7 +87,10 @@ export default function UserProfilePage() {
   const myInteracted = myData?.[2]?.result as boolean | undefined;
   const myProgress = myData?.[3]?.result as number | undefined;
   const myComposite = myData?.[4]?.result as number | undefined;
-  const myBreakdown = myData?.[5]?.result as { pos: number; neg: number } | undefined;
+  const myBreakdownRaw = myData?.[5]?.result as any;
+  const myBreakdown = myBreakdownRaw == null ? undefined
+    : Array.isArray(myBreakdownRaw) ? { pos: Number(myBreakdownRaw[0]), neg: Number(myBreakdownRaw[1]) }
+    : { pos: Number(myBreakdownRaw.pos), neg: Number(myBreakdownRaw.neg) };
   const myPassport = myData?.[6]?.result as number | undefined;
   const myBio = myData?.[7]?.result as boolean | undefined;
   const myThird = myData?.[8]?.result as number | undefined;
@@ -99,7 +102,10 @@ export default function UserProfilePage() {
   const lookupSocials = (lookupData?.[3]?.result as SocialStruct[] | undefined) ?? [];
   const lookupProgress = lookupData?.[4]?.result as number | undefined;
   const lookupComposite = lookupData?.[5]?.result as number | undefined;
-  const lookupBreakdown = lookupData?.[6]?.result as { pos: number; neg: number } | undefined;
+  const lookupBreakdownRaw = lookupData?.[6]?.result as any;
+  const lookupBreakdown = lookupBreakdownRaw == null ? undefined
+    : Array.isArray(lookupBreakdownRaw) ? { pos: Number(lookupBreakdownRaw[0]), neg: Number(lookupBreakdownRaw[1]) }
+    : { pos: Number(lookupBreakdownRaw.pos), neg: Number(lookupBreakdownRaw.neg) };
   const canReview = lookupData?.[7]?.result as boolean | undefined;
   const iInteracted = lookupData?.[8]?.result as boolean | undefined;
 

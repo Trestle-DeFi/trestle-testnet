@@ -140,7 +140,10 @@ export default function Freelance() {
     return projIds.map((id, i) => {
       const r = projsRaw[i]?.result as any;
       if (!r) return null;
-      return { id: BigInt(id), client: r.client as Address, freelancer: r.freelancer as Address, status: Number(r.status), totalBudget: r.totalBudget as bigint, escrowed: r.escrowedAmount as bigint, title: r.title as string, desc: r.descriptionURI as string, github: r.github as string, category: r.category as string, durationDays: r.durationDays as bigint };
+      const raw = Array.isArray(r)
+        ? { client: r[1], freelancer: r[2], title: r[3], descriptionURI: r[4], github: r[5], category: r[6], durationDays: r[7], totalBudget: r[9], status: r[11], escrowedAmount: r[12] }
+        : r;
+      return { id: BigInt(id), client: raw.client as Address, freelancer: raw.freelancer as Address, status: Number(raw.status), totalBudget: raw.totalBudget as bigint, escrowed: raw.escrowedAmount as bigint, title: raw.title as string, desc: raw.descriptionURI as string, github: raw.github as string, category: raw.category as string, durationDays: raw.durationDays as bigint };
     }).filter((p): p is NonNullable<typeof p> => p != null);
   }, [projsRaw, projIds]);
 
