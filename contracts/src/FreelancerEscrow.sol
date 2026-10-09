@@ -775,38 +775,26 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (p.status != ProjectStatus.Disputed) revert WrongStatus();
         if (block.timestamp < p.disputeDeadline) revert WrongStatus();
 
-        uint256 approvedCount;
-        for (uint256 i; i < p.milestones.length; i++) {
-            if (p.milestones[i].status == MilestoneStatus.Approved) {
-                approvedCount++;
-            }
-        }
-
+        // ZAFRAN-H1 fix (2026-10-06): the old majority-vote heuristic
+        // (approvedCount*2 > milestones.length) awarded the ENTIRE remaining
+        // escrow to the freelancer, letting them steal payment for uncompleted
+        // milestones via a strategic dispute. Remaining escrow represents
+        // uncompleted work funded by the client, so it defaults to a FULL
+        // client refund (no fee — same rule as A-3). The freelancer keeps what
+        // they already earned via approveMilestone. Agent arbitration via
+        // resolveDispute() remains available when the freelancer deserves
+        // part of the remainder.
         p.status = ProjectStatus.Completed;
         uint256 amount = p.escrowedAmount;
         (uint256 available, uint256 yieldOut) = _withdrawFromVault(_id, amount);
         p.escrowedAmount = 0;
         totalEscrowed[p.paymentToken] -= amount; // migration runbook: obligation released
 
-        address recipient;
-        bool toFreelancer = approvedCount * 2 > p.milestones.length;
-        if (toFreelancer) {
-            recipient = p.freelancer;
-        } else {
-            recipient = p.client;
-        }
         if (available > 0) {
-            if (toFreelancer) {
-                uint256 fee = (available * PLATFORM_FEE_BPS) / BPS;
-                uint256 netAmount = available - fee;
-                if (fee > 0) _send(p.paymentToken, treasury, fee);
-                _send(p.paymentToken, recipient, netAmount);
-            } else {
-                _send(p.paymentToken, recipient, available); // A-3 fix: full refund
-            }
+            _send(p.paymentToken, p.client, available);
         }
         if (yieldOut > 0) _distributeYield(_id, p.paymentToken, yieldOut);
-        emit Resolved(_id, toFreelancer);
+        emit Resolved(_id, false);
     }
 
     function cancelProject(uint256 _id) external nonReentrant onlyClient(_id) {

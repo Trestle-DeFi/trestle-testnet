@@ -478,6 +478,58 @@ contract AuditPoCTest {
         vm.prank(CLIENT_A);
         escrow.approveMilestone(1, 1); // completes the project
     }
+
+    // ─── ZAFRAN-H1 (HIGH) FIXED: autoResolveDispute no longer pays freelancer
+    // for uncompleted milestones via strategic dispute (majority-vote heuristic
+    // removed — remainder defaults to full client refund).
+    function test_autoResolveDisputeRefundsClientNotFreelancer() public {
+        FreelancerEscrow escrow = new FreelancerEscrow(TREASURY);
+        string[] memory descs = new string[](3);
+        descs[0] = "m1";
+        descs[1] = "m2";
+        descs[2] = "m3";
+        uint256[] memory amts = new uint256[](3);
+        amts[0] = 1 ether;
+        amts[1] = 1 ether;
+        amts[2] = 1 ether;
+        uint256[] memory dls = new uint256[](3);
+        dls[0] = block.timestamp + 30 days;
+        dls[1] = block.timestamp + 60 days;
+        dls[2] = block.timestamp + 90 days;
+
+        vm.deal(CLIENT_A, 10 ether);
+        vm.prank(CLIENT_A);
+        escrow.createProjectFixed("P", "u", "g", "c", 120, 3 ether, descs, amts, dls);
+        vm.prank(CLIENT_A);
+        escrow.fundProject{value: 3 ether}(1);
+        vm.prank(FREELANCER);
+        escrow.acceptProject(1);
+
+        // Legitimate work: approve 2 of 3 milestones (freelancer earns ~1.94 ETH)
+        vm.prank(FREELANCER);
+        escrow.submitMilestone(1, 0, "hash1");
+        vm.prank(CLIENT_A);
+        escrow.approveMilestone(1, 0);
+        vm.prank(FREELANCER);
+        escrow.submitMilestone(1, 1, "hash2");
+        vm.prank(CLIENT_A);
+        escrow.approveMilestone(1, 1);
+
+        uint256 freelancerBefore = FREELANCER.balance;
+        uint256 clientBefore = CLIENT_A.balance;
+
+        // ATTACK (now neutralized): strategic dispute, wait out the timeout
+        vm.prank(FREELANCER);
+        escrow.disputeProject(1);
+        vm.warp(block.timestamp + 7 days + 1);
+        vm.prank(FREELANCER);
+        escrow.autoResolveDispute(1);
+
+        // Freelancer gains NOTHING for the uncompleted milestone 3 …
+        assertEq(FREELANCER.balance, freelancerBefore, "freelancer stole remainder");
+        // … client gets the full 1 ETH remainder back (no fee on own refund)
+        assertEq(CLIENT_A.balance, clientBefore + 1 ether, "client not refunded");
+    }
 }
 
 /// @dev Migration target that can receive native ETH.
