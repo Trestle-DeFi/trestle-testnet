@@ -33,7 +33,7 @@ Deployed addresses are maintained in `frontend/src/config/contracts.ts` (`CONTRA
 | **UserProfile** | `0xa1889d658601c7fA649a70516341fF4aac761ca8` |
 | **MockUSDC** | `0x6A3d2890f93e67BB20c826DA9536AD863584Cd5E` |
 
-All verified on [Basescan Sepolia](https://sepolia.basescan.org) except the 2026-10-12 F-T1 FreelancerEscrow, whose source verification is pending an Etherscan API V2-migrated key (on-chain bytecode matches local artifact; `scripts/verify_live_ft1.js`). RWA pricing: Chainlink testnet feeds are deprecated (see [Shutdown Policy](https://docs.chain.link/data-feeds/selecting-data-feeds#data-feed-shutdown-policy)); price set via admin `setManualPrice()` ($3000 ETH/USD), `syncPrice()` remains primary if a live feed returns.
+All verified on [Basescan Sepolia](https://sepolia.basescan.org), including the 2026-10-12 F-T1 FreelancerEscrow (Etherscan API V2). RWA pricing: Chainlink testnet feeds are deprecated (see [Shutdown Policy](https://docs.chain.link/data-feeds/selecting-data-feeds#data-feed-shutdown-policy)); price set via admin `setManualPrice()` ($3000 ETH/USD), `syncPrice()` remains primary if a live feed returns.
 
 ### Arbitrum Sepolia Deployments (latest — 2026-09-24, FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
 
@@ -47,7 +47,7 @@ All verified on [Basescan Sepolia](https://sepolia.basescan.org) except the 2026
 | **UserProfile** | `0xA8fb99180AdfFD8d0986A32f472faD2A17B57D7D` |
 | **MockUSDC** | `0xC36C239D0b3144015178727f939e0766Bf71D816` |
 
-All verified on [Arbiscan Sepolia](https://sepolia.arbiscan.io) except the 2026-10-12 F-T1 FreelancerEscrow (source verification pending Etherscan V2 key; `scripts/verify_live_ft1.js` confirms bytecode + wiring). RWA pricing: manual `setManualPrice()` fallback ($3000 ETH/USD) — no classic Chainlink feeds remain on this testnet.
+All verified on [Arbiscan Sepolia](https://sepolia.arbiscan.io), including the 2026-10-12 F-T1 FreelancerEscrow (Etherscan API V2; `scripts/verify_live_ft1.js` also confirms bytecode + wiring). RWA pricing: manual `setManualPrice()` fallback ($3000 ETH/USD) — no classic Chainlink feeds remain on this testnet.
 
 ### Polygon Amoy Deployments (2026-09-25, FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
 
@@ -61,7 +61,7 @@ All verified on [Arbiscan Sepolia](https://sepolia.arbiscan.io) except the 2026-
 | **UserProfile** | `0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952` |
 | **MockUSDC** | `0xBD551EE22321B500AB171885eb77574943aB65E1` |
 
-All verified on [Polygonscan Amoy](https://amoy.polygonscan.com) except the 2026-10-12 F-T1 FreelancerEscrow (source verification pending Etherscan V2 key; `scripts/verify_live_ft1.js` confirms bytecode + wiring). RWA pricing: manual `setManualPrice()` fallback ($0.20 POL/USD) — Amoy ETH/USD feed is sunset (contract exists but reverts on all calls).
+All verified on [Polygonscan Amoy](https://amoy.polygonscan.com), including the 2026-10-12 F-T1 FreelancerEscrow (Etherscan API V2; `scripts/verify_live_ft1.js` also confirms bytecode + wiring). RWA pricing: manual `setManualPrice()` fallback ($0.20 POL/USD) — Amoy ETH/USD feed is sunset (contract exists but reverts on all calls).
 
 ## Features
 
