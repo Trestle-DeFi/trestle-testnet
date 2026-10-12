@@ -58,36 +58,36 @@ Join [reward.trestle.website](https://reward.trestle.website) to validate and cl
 **Out-of-scope:**
 - UI/UX, missing features, third-party integrations, social engineering, private/internal code
 
-## Contract Addresses (Base Sepolia Testnet — redeployed 2026-09-24, FreelancerEscrow re-redeployed 2026-10-09, all verified)
+## Contract Addresses (Base Sepolia Testnet — redeployed 2026-09-24, FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
 
 | Contract | Address |
 |----------|---------|
 | DigitalGoods | `0x89f5394a468343F405285040664Fd77843D2a2e6` |
-| FreelancerEscrow | `0xA8fb99180AdfFD8d0986A32f472faD2A17B57D7D` |
+| FreelancerEscrow | `0x2Da8486d0bC8E44E23eF02a3760745FC0b57B5E2` |
 | DigitalRWA | `0x5582496273a71E60e457D19773050CC848A2F52C` |
 | FeeDistributor | `0xcc5f9C02cD093002cE3921180e32f76cE03F01C0` |
 | GovernanceToken (tGOV) | `0xc550F40566C2aFEe6980aC3d64b9B3A2A0B8b914` |
 | UserProfile | `0xa1889d658601c7fA649a70516341fF4aac761ca8` |
 | Mock USDC | `0x6A3d2890f93e67BB20c826DA9536AD863584Cd5E` |
 
-## Contract Addresses (Arbitrum Sepolia Testnet — redeployed 2026-09-24, FreelancerEscrow re-redeployed 2026-10-09, all verified)
+## Contract Addresses (Arbitrum Sepolia Testnet — redeployed 2026-09-24, FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
 
 | Contract | Address |
 |----------|---------|
 | DigitalGoods | `0x6D6C679279f5C680e5a6ef33306F2e9A78577DCa` |
-| FreelancerEscrow | `0xFd919cE133d356bdeb0577e6b35b20b7caD69722` |
+| FreelancerEscrow | `0x18F01543d6D1AF6f80E8624f17bc73666e43525e` |
 | DigitalRWA | `0x4eC3777B16FC7Da556B451679A10A8fDFC5Fd48D` |
 | FeeDistributor | `0xD63A90d82Fc8c74FbBbE3d9b0516d79985Fe0d71` |
 | GovernanceToken (tGOV) | `0x2Ad9fFCBC6453B2b7A458bD80747c202F188606D` |
 | UserProfile | `0xA8fb99180AdfFD8d0986A32f472faD2A17B57D7D` |
 | Mock USDC | `0xC36C239D0b3144015178727f939e0766Bf71D816` |
 
-## Contract Addresses (Polygon Amoy Testnet — redeployed 2026-09-25, FreelancerEscrow re-redeployed 2026-10-09, all verified)
+## Contract Addresses (Polygon Amoy Testnet — redeployed 2026-09-25, FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
 
 | Contract | Address |
 |----------|---------|
 | DigitalGoods | `0xBd124c4395b47093CEc78497ec8b098977416396` |
-| FreelancerEscrow | `0x05f6B7e45833A4Cb9f934dB4116993b6c2522546` |
+| FreelancerEscrow | `0x33226359935b5922F834355ced7D49A66825f92C` |
 | DigitalRWA | `0x7f750E8BD9c9C2685710A03De5307961BC50aF31` |
 | FeeDistributor | `0x4104eA3D55F9C2F5818671e5365F801996D83038` |
 | GovernanceToken (tGOV) | `0x7f411bA9824513a95C591A061F97A0A375B2cB71` |
@@ -115,6 +115,14 @@ Join [reward.trestle.website](https://reward.trestle.website) to validate and cl
 | ID | Severity | Title | Status |
 |----|----------|-------|--------|
 | ZAFRAN-H1 | High (S2) | `autoResolveDispute` majority-vote heuristic let freelancer steal remainder via strategic dispute | Fixed 2026-10-09 (remainder defaults to full client refund; redeployed all 3 testnets) |
+
+## Bug Bounty Findings — 2026-10 (F-T1 coarse-share)
+
+| ID | Severity | Title | Status |
+|----|----------|-------|--------|
+| F-T1 (Ibnu) | High (S2) | Vault donation could mint a coarse-but-nonzero share count; redeeming it booked surplus as yield and bricked all remaining milestones (bypasses H-1 `==0` + A-2 dust bump) | Fixed 2026-10-12 (`MIN_SHARE_RATE` deposit guard + bumped-redemption surplus held in escrow, not treasury; redeployed all 3 testnets) |
+
+Fix: `FreelancerEscrow._depositToVault` reverts `CoarseShares()` unless `sharesAdded * 1e18 >= assets * MIN_SHARE_RATE` (1e15 = shares ≥ assets/1000); `_withdrawFromVault` no longer books surplus from an A-2 bumped redemption as `yieldOut`. Regression suite: `contracts/test/FT1Fix.t.sol` (4 ✓) + `AuditPoC.t.sol` (16 ✓). New FE: Base Sepolia `0x2Da8486d0bC8E44E23eF02a3760745FC0b57B5E2`, Arbitrum Sepolia `0x18F01543d6D1AF6f80E8624f17bc73666e43525e`, Polygon Amoy `0x33226359935b5922F834355ced7D49A66825f92C` (source verification pending Etherscan V2 key migration; bytecode + wiring confirmed by `scripts/verify_live_ft1.js`).
 
 ## Testnet Review Findings — 2026-09-24 (F-1 … F-9)
 

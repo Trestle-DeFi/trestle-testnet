@@ -76,6 +76,11 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     uint256 public constant MIN_MILESTONES = 2;
     uint256 public constant MILESTONE_APPROVAL_TIMEOUT = 14 days;
     uint256 public constant DISPUTE_TIMEOUT = 7 days;
+    /// @dev F-T1 fix: minimum vault share rate (shares per 1e18 assets) accepted
+    ///      on deposit. 1e15 = shares >= assets/1000, i.e. tolerates up to
+    ///      1000x vault appreciation while rejecting donation-manipulated
+    ///      coarse grants (e.g. 1 share for a 2000e18 escrow => rate 5e14).
+    uint256 public constant MIN_SHARE_RATE = 1e15;
 
     address public treasury;
     mapping(uint256 => Project) public projects;
@@ -141,6 +146,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     error TransferFailed();
     error TokenNotAllowed();
     error ZeroShares();
+    error CoarseShares();
     error VaultMigrationBlocked();
     error SelfAccept();
     error UnsettledObligations();
@@ -352,6 +358,12 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         // shares — silently crediting 0 would strand the escrow in the vault
         // and brick later payouts (see A-2).
         if (sharesAdded == 0) revert ZeroShares();
+        // F-T1 fix: a donation-inflated vault can still grant a coarse-but-
+        // nonzero share count (1 share for the entire escrow). Redeeming that
+        // single share later pays the whole vault balance as one milestone's
+        // payout + "yield" and bricks every remaining milestone. Fail loudly
+        // at deposit time instead (TRESTLE-FT1-COARSE-20261009).
+        if (sharesAdded * 1e18 < assets * MIN_SHARE_RATE) revert CoarseShares();
         if (projectShares[_id] == 0) _projectsWithShares++; // E-2 migration lock
         projectShares[_id] += sharesAdded;
         emit FundsDepositedToVault(_id, assets);
@@ -379,6 +391,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (escrowed == 0) return (0, 0);
 
         uint256 sharesOut = _principal >= escrowed ? shares : (shares * _principal) / escrowed;
+        bool bumped = sharesOut == 0;
         if (sharesOut == 0) sharesOut = 1; // A-2 fix: dust principal still redeems something
         if (sharesOut > shares) sharesOut = shares; // defensive
 
@@ -388,7 +401,10 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (remaining == 0) _projectsWithShares--;
 
         available = assetsOut < _principal ? assetsOut : _principal; // E-7 shortfall fallback
-        if (assetsOut > available) yieldOut = assetsOut - available;
+        // F-T1 fix: surplus from a BUMPED (dust-principal) redemption is
+        // unredeemed escrow value, not protocol yield — leave it in the
+        // contract rather than routing it to the treasury/fee distributor.
+        if (assetsOut > available && !bumped) yieldOut = assetsOut - available;
         emit FundsWithdrawnFromVault(_id, available, yieldOut);
     }
 

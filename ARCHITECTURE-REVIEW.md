@@ -27,6 +27,7 @@ Verified applied in codebase (`HEAD` = `676465a`):
 | `604312f` | Deal-gated reviews, uint32 counters (F-5/F-6) | ✅ | `UserProfile.sol` |
 | `c553155` | **TRESTLE-2026-01** Dutch scale-after-accept | ✅ | `FreelancerEscrow.sol` |
 | `c553155` | **TRESTLE-2026-02** dispute-state auto-approval lock | ✅ | `FreelancerEscrow.sol` |
+| `FT1 fix` | **TRESTLE-FT1-COARSE** deposit `MIN_SHARE_RATE` guard + bumped-redemption surplus held (bounty 2026-10-12) | ✅ | `FreelancerEscrow.sol`, `test/FT1Fix.t.sol` |
 | `c048c95` | Client-side form validation (F1) | ✅ | `frontend/src/lib/validation.ts` |
 
 Verification: `npx hardhat test` (144 ✓), `forge test` (15 ✓), `validation.test.mjs` (15 ✓), `npm run build` (6/6 routes, 0 errors).
