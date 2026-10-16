@@ -110,7 +110,7 @@ The deploy script auto-detects chain ID and selects the correct:
 - Pausable contracts (DigitalRWA)
 - Token-gated whitelist (DigitalRWA — requires USDC balance, swappable via `setWhitelistToken()`, capped at `MAX_WHITELIST_TOKENS`)
 - Oracle: dynamic feed decimals in `subscribe()`, staleness checks, and a ≤20% per-sync price-deviation guard
-- Audited 2026-09-18 — 15 findings fixed with regression tests in `test/AuditPoC.t.sol` (Foundry) and the Hardhat suite
+- Audited 2026-09-18 — 15 findings fixed with regression tests in the Hardhat suite
 
 ## Architecture
 

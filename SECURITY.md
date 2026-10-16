@@ -108,7 +108,7 @@ Join [reward.trestle.website](https://reward.trestle.website) to validate and cl
 | A-6 | Low | MockGovernanceToken burn no access control | Acknowledged (mock only) |
 | A-7 | Low | `setFeeDistributor` missing zero-check | Fixed |
 
-**Tests:** 26 Foundry + 144 Hardhat passing. Slither: 0 HIGH/MEDIUM findings.
+**Tests:** 144 Hardhat passing. Slither: 0 HIGH/MEDIUM findings.
 
 ## Bug Bounty Findings — 2026-10 (ZAFRAN-H1)
 
@@ -122,7 +122,7 @@ Join [reward.trestle.website](https://reward.trestle.website) to validate and cl
 |----|----------|-------|--------|
 | F-T1 (Ibnu) | High (S2) | Vault donation could mint a coarse-but-nonzero share count; redeeming it booked surplus as yield and bricked all remaining milestones (bypasses H-1 `==0` + A-2 dust bump) | Fixed 2026-10-12 (`MIN_SHARE_RATE` deposit guard + bumped-redemption surplus held in escrow, not treasury; redeployed all 3 testnets) |
 
-Fix: `FreelancerEscrow._depositToVault` reverts `CoarseShares()` unless `sharesAdded * 1e18 >= assets * MIN_SHARE_RATE` (1e15 = shares ≥ assets/1000); `_withdrawFromVault` no longer books surplus from an A-2 bumped redemption as `yieldOut`. Regression suite: `contracts/test/FT1Fix.t.sol` (4 ✓) + `AuditPoC.t.sol` (16 ✓). New FE: Base Sepolia `0x2Da8486d0bC8E44E23eF02a3760745FC0b57B5E2`, Arbitrum Sepolia `0x18F01543d6D1AF6f80E8624f17bc73666e43525e`, Polygon Amoy `0x33226359935b5922F834355ced7D49A66825f92C` — all source-verified on the explorers (Etherscan API V2, 2026-10-12) and bytecode/wiring-confirmed by `scripts/verify_live_ft1.js`.
+Fix: `FreelancerEscrow._depositToVault` reverts `CoarseShares()` unless `sharesAdded * 1e18 >= assets * MIN_SHARE_RATE` (1e15 = shares ≥ assets/1000); `_withdrawFromVault` no longer books surplus from an A-2 bumped redemption as `yieldOut`. New FE: Base Sepolia `0x2Da8486d0bC8E44E23eF02a3760745FC0b57B5E2`, Arbitrum Sepolia `0x18F01543d6D1AF6f80E8624f17bc73666e43525e`, Polygon Amoy `0x33226359935b5922F834355ced7D49A66825f92C` — all source-verified on the explorers (Etherscan API V2, 2026-10-12) and bytecode/wiring-confirmed by `scripts/verify_live_ft1.js`.
 
 ## Bug Bounty Findings — 2026-10 (gig milestone deadline bound)
 
@@ -130,7 +130,7 @@ Fix: `FreelancerEscrow._depositToVault` reverts `CoarseShares()` unless `sharesA
 |----|----------|-------|--------|
 | GIG-DEADLINE (Nordin/KupiaSec) | Medium (S3) | `createGig`/`updateGig` have no duration field and pass `_durationDays == 0` to `_validateMilestones`, so the relative deadline cap never fired — a freelancer could commit milestones with deadlines years in the future (zombie escrow), bloating vault share obligations and blocking vault migration | Fixed 2026-10-15 (always-on `MAX_MILESTONE_HORIZON` = 365 days cap when no duration is supplied; redeployed all 3 testnets 2026-10-16) |
 
-Fix: `_validateMilestones` now computes `maxDeadline = _durationDays > 0 ? _durationDays * 1 days : MAX_MILESTONE_HORIZON` and unconditionally enforces `_milestoneDeadlines[i] <= block.timestamp + maxDeadline`, so gig paths (which pass 0) are bounded to 365 days. Regression suite: `contracts/test/GigDeadline.t.sol` (6 ✓). New FE: Base Sepolia `0x756CF434FAB30A18117810B9dC3a8f7F68e891DB`, Arbitrum Sepolia `0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952`, Polygon Amoy `0xD0de38492b5f5F2D3979DdD798CCE95395140C53` — all source-verified on the explorers (Etherscan API V2, 2026-10-16) and bytecode/wiring-confirmed by `scripts/verify_live_gig.js`.
+Fix: `_validateMilestones` now computes `maxDeadline = _durationDays > 0 ? _durationDays * 1 days : MAX_MILESTONE_HORIZON` and unconditionally enforces `_milestoneDeadlines[i] <= block.timestamp + maxDeadline`, so gig paths (which pass 0) are bounded to 365 days. New FE: Base Sepolia `0x756CF434FAB30A18117810B9dC3a8f7F68e891DB`, Arbitrum Sepolia `0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952`, Polygon Amoy `0xD0de38492b5f5F2D3979DdD798CCE95395140C53` — all source-verified on the explorers (Etherscan API V2, 2026-10-16) and bytecode/wiring-confirmed by `scripts/verify_live_gig.js`.
 
 ## Testnet Review Findings — 2026-09-24 (F-1 … F-9)
 

@@ -103,7 +103,7 @@ All 15 audit findings fixed and regression-tested. See `SECURITY.md`.
 - Custom errors, zero-address guards, AccessControl roles
 - Oracle: dynamic decimals + staleness + 20% max-deviation
 - Whitelist with 24h expiry flags (DigitalRWA)
-- 13 Foundry + 137 Hardhat tests passing
+- 144 Hardhat tests passing
 
 ## Deploy
 
