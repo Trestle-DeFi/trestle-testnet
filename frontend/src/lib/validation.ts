@@ -5,9 +5,8 @@ import { isAddress, parseUnits, type Address } from "viem";
  *
  * These helpers mirror the on-chain guards so users get a clear message instead
  * of a reverted/undecodable transaction (and so `parseUnits` never throws from a
- * click handler). See AUDIT-REPORT.md § Frontend Audit:
- *   - Marketplace: "No client-side validation on listing metadata before on-chain submission"
- *   - RWA: "No address format validation on whitelist input fields"
+ * click handler). They back the marketplace listing-metadata and RWA whitelist
+ * address validation paths.
  */
 
 export const ZERO_ADDRESS: Address = "0x0000000000000000000000000000000000000000";
@@ -87,7 +86,15 @@ export function validateListingDraft(draft: ListingDraft): string | null {
   return null;
 }
 
-// ── Freelance form validation (AUDIT-REPORT.md § F1) ──────────────────
+// ── Freelance form validation ─────────────────────────────────────────
+
+/**
+ * Mirror of `FreelancerEscrow.MAX_MILESTONE_HORIZON` (365 days). Gig paths pass
+ * `_durationDays == 0`, so `_validateMilestones` caps every gig milestone
+ * deadline at `block.timestamp + 365 days`; a larger input reverts
+ * `PastDeadline()`. Projects are additionally capped by their own duration.
+ */
+export const MAX_MILESTONE_HORIZON_DAYS = 365;
 
 export interface MilestoneInputs {
   descriptions: string;
@@ -116,11 +123,13 @@ export interface ProjectDraft {
  *
  * Mirrors the on-chain checks in `FreelancerEscrow.createGig` /
  * `createProjectFixed`: at least 1 milestone, each amount > 0, each duration
- * a positive integer (days), and all three arrays the same length.
+ * a positive integer (days) no later than the escrow deadline cap, and all
+ * three arrays the same length.
  *
+ * @param maxDays deadline horizon in days (defaults to `MAX_MILESTONE_HORIZON_DAYS`).
  * @returns the first human-readable error, or `null` when valid.
  */
-export function validateMilestones(m: MilestoneInputs): string | null {
+export function validateMilestones(m: MilestoneInputs, maxDays = MAX_MILESTONE_HORIZON_DAYS): string | null {
   const descs = m.descriptions.split(",").map(s => s.trim()).filter(Boolean);
   const amts = m.amounts.split(",").map(s => s.trim()).filter(Boolean);
   const durs = m.durations.split(",").map(s => s.trim()).filter(Boolean);
@@ -144,6 +153,9 @@ export function validateMilestones(m: MilestoneInputs): string | null {
     if (!Number.isFinite(days) || days <= 0 || !Number.isInteger(days)) {
       return `Milestone ${i + 1} duration must be a positive whole number of days.`;
     }
+    if (days > maxDays) {
+      return `Milestone ${i + 1} duration must be at most ${maxDays} days (escrow deadline cap).`;
+    }
   }
 
   return null;
@@ -162,7 +174,10 @@ export function validateProjectDraft(draft: ProjectDraft): string | null {
   if (!draft.title?.trim()) return "Title is required.";
   if (!draft.descriptionURI?.trim()) return "Description URI is required.";
   if (!isPositiveAmount(draft.totalBudget)) return "Total budget must be greater than 0.";
-  return validateMilestones(draft.milestones);
+  // On-chain cap is `durationDays` when supplied (> 0), else MAX_MILESTONE_HORIZON.
+  const dur = Number((draft.durationDays ?? "").trim());
+  const maxDays = Number.isFinite(dur) && dur > 0 ? dur : MAX_MILESTONE_HORIZON_DAYS;
+  return validateMilestones(draft.milestones, maxDays);
 }
 
 /** True when `value` is a well-formed EVM address (checksum-aware, via viem). */

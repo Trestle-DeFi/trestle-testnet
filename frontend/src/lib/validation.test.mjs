@@ -1,12 +1,14 @@
-// Regression tests for the frontend audit findings (AUDIT-REPORT.md § Frontend Audit):
-//   - Marketplace: "No client-side validation on listing metadata before on-chain submission"
-//   - RWA: "No address format validation on whitelist input fields"
+// Regression tests for the frontend form validation helpers:
+//   - Marketplace: listing metadata validated before on-chain submission
+//   - RWA: address format validation on whitelist input fields
+//   - Freelance: gig/project draft + milestone deadline horizon
 //
-// Run with: npm test  (Node's built-in test runner; no extra dependencies)
+// Run with: node --test src/lib/validation.test.mjs  (Node's built-in test runner)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   ZERO_ADDRESS,
+  MAX_MILESTONE_HORIZON_DAYS,
   isPositiveAmount,
   isValidAddress,
   normalizeAddressInput,
@@ -140,4 +142,47 @@ test("validateProjectDraft requires title, description, budget, and valid milest
   assert.equal(validateProjectDraft({ ...base, title: "" }), "Title is required.");
   assert.equal(validateProjectDraft({ ...base, descriptionURI: "" }), "Description URI is required.");
   assert.equal(validateProjectDraft({ ...base, totalBudget: "0" }), "Total budget must be greater than 0.");
+});
+
+// ── Gig/project milestone deadline cap (TRESTLE-GIG-DEADLINE) ─────────
+
+test("MAX_MILESTONE_HORIZON_DAYS mirrors the on-chain 365-day cap", () => {
+  assert.equal(MAX_MILESTONE_HORIZON_DAYS, 365);
+});
+
+test("validateMilestones enforces the default 365-day horizon", () => {
+  assert.equal(validateMilestones({ descriptions: "A", amounts: "1", durations: "365" }), null);
+  assert.match(
+    validateMilestones({ descriptions: "A", amounts: "1", durations: "366" }),
+    /at most 365 days/,
+  );
+});
+
+test("validateMilestones honours a custom day cap", () => {
+  assert.equal(validateMilestones({ descriptions: "A", amounts: "1", durations: "7" }, 7), null);
+  assert.match(validateMilestones({ descriptions: "A", amounts: "1", durations: "8" }, 7), /at most 7 days/);
+});
+
+test("validateGigDraft rejects deadlines beyond the 365-day horizon", () => {
+  const base = { title: "Web Dev", descriptionURI: "ipfs://QmDesc", price: "0.001", milestones: { descriptions: "A", amounts: "0.001", durations: "7" } };
+  assert.equal(validateGigDraft({ ...base, milestones: { ...base.milestones, durations: "365" } }), null);
+  assert.match(validateGigDraft({ ...base, milestones: { ...base.milestones, durations: "400" } }), /at most 365 days/);
+});
+
+test("validateProjectDraft caps milestones at durationDays (or 365 when unset)", () => {
+  const base = { title: "Build DApp", descriptionURI: "ipfs://QmSpec", totalBudget: "0.01" };
+  // No duration -> 365-day horizon.
+  assert.match(
+    validateProjectDraft({ ...base, milestones: { descriptions: "A", amounts: "0.005", durations: "366" } }),
+    /at most 365 days/,
+  );
+  // Explicit duration caps earlier than the horizon.
+  assert.equal(
+    validateProjectDraft({ ...base, durationDays: "30", milestones: { descriptions: "A", amounts: "0.005", durations: "30" } }),
+    null,
+  );
+  assert.match(
+    validateProjectDraft({ ...base, durationDays: "30", milestones: { descriptions: "A", amounts: "0.005", durations: "31" } }),
+    /at most 30 days/,
+  );
 });

@@ -76,6 +76,13 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     uint256 public constant MIN_MILESTONES = 2;
     uint256 public constant MILESTONE_APPROVAL_TIMEOUT = 14 days;
     uint256 public constant DISPUTE_TIMEOUT = 7 days;
+    /// @dev Gig deadline-bound fix (TRESTLE-GIG-DEADLINE-20261015): `createGig`
+    ///      and `updateGig` have no duration field and pass `_durationDays == 0`
+    ///      to `_validateMilestones`, so the relative deadline cap never fired
+    ///      and gig milestone deadlines were unbounded — a freelancer could set
+    ///      a deadlines-years-out zombie escrow. When no duration is supplied,
+    ///      cap every deadline at `block.timestamp + MAX_MILESTONE_HORIZON`.
+    uint256 public constant MAX_MILESTONE_HORIZON = 365 days;
     /// @dev F-T1 fix: minimum vault share rate (shares per 1e18 assets) accepted
     ///      on deposit. 1e15 = shares >= assets/1000, i.e. tolerates up to
     ///      1000x vault appreciation while rejecting donation-manipulated
@@ -237,14 +244,16 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (len < MIN_MILESTONES || len != _milestoneAmounts.length || len != _milestoneDeadlines.length) revert TooFewMilestones();
         if (_totalBudget == 0) revert BudgetTooLow();
         // Joop reply (item 13): make `durationDays` meaningful — every milestone
-        // deadline must fit within the project duration. (Note: 0 = no limit.)
-        uint256 maxDeadline = _durationDays * 1 days;
+        // deadline must fit within the project duration. Gig paths (createGig/
+        // updateGig) pass 0, so the relative cap is replaced by an absolute
+        // MAX_MILESTONE_HORIZON bound (TRESTLE-GIG-DEADLINE-20261015).
+        uint256 maxDeadline = _durationDays > 0 ? _durationDays * 1 days : MAX_MILESTONE_HORIZON;
         uint256 totalCheck;
         for (uint256 i; i < len; i++) {
             if (_milestoneAmounts[i] == 0) revert InvalidMilestoneAmount();
             if (_milestoneDeadlines[i] <= block.timestamp) revert PastDeadline();
             if (i > 0 && _milestoneDeadlines[i] <= _milestoneDeadlines[i - 1]) revert InvalidMilestoneAmount();
-            if (_durationDays > 0 && _milestoneDeadlines[i] > block.timestamp + maxDeadline) revert PastDeadline();
+            if (_milestoneDeadlines[i] > block.timestamp + maxDeadline) revert PastDeadline();
             totalCheck += _milestoneAmounts[i];
         }
         if (totalCheck != _totalBudget) revert BudgetTooLow();

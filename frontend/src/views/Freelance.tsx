@@ -447,7 +447,7 @@ export default function Freelance() {
             { label: `Price (${chainCurrency})`, val: gigPrice, set: setGigPrice, type: "number" },
             { label: "Milestone Descriptions (comma-sep)", val: gigMsDesc, set: setGigMsDesc },
             { label: "Milestone Amounts (comma-sep)", val: gigMsAmt, set: setGigMsAmt },
-            { label: "Milestone Deadlines (days, comma-sep)", val: gigMsDur, set: setGigMsDur },
+            { label: "Milestone Deadlines (days, comma-sep, max 365)", val: gigMsDur, set: setGigMsDur },
           ].map(f => (
             <div key={f.label}>
               <div className="flex justify-between items-center mb-1">
@@ -482,7 +482,7 @@ export default function Freelance() {
             { label: `Total Budget (${chainCurrency})`, val: projBudget, set: setProjBudget, type: "number" },
             { label: "Milestone Descriptions (comma-sep)", val: projMsDesc, set: setProjMsDesc },
             { label: "Milestone Amounts (comma-sep)", val: projMsAmt, set: setProjMsAmt },
-            { label: "Milestone Deadlines (days, comma-sep)", val: projMsDur, set: setProjMsDur },
+            { label: "Milestone Deadlines (days, comma-sep, \u2264 duration or 365)", val: projMsDur, set: setProjMsDur },
           ].map(f => (
             <div key={f.label}>
               <div className="flex justify-between items-center mb-1">

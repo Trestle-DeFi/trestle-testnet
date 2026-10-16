@@ -42,10 +42,10 @@ export const CONTRACT_ADDRESSES: Record<number, {
   mockXNOBT: `0x${string}`;
   mockXBRT: `0x${string}`;
 }> = {
-  // Polygon Amoy — Redeployed 2026-09-25 (FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
+  // Polygon Amoy — Redeployed 2026-09-25 (FreelancerEscrow re-redeployed 2026-10-16: F-T1 + gig-deadline bound)
   [CHAIN_CONFIG.amoy.id]: {
     digitalGoods: "0xBd124c4395b47093CEc78497ec8b098977416396",
-    freelancerEscrow: "0x33226359935b5922F834355ced7D49A66825f92C",
+    freelancerEscrow: "0xD0de38492b5f5F2D3979DdD798CCE95395140C53",
     digitalRWA: "0x7f750E8BD9c9C2685710A03De5307961BC50aF31",
     govToken: "0x7f411bA9824513a95C591A061F97A0A375B2cB71",
     feeDistributor: "0x4104eA3D55F9C2F5818671e5365F801996D83038",
@@ -55,10 +55,10 @@ export const CONTRACT_ADDRESSES: Record<number, {
     mockXNOBT: "0x0000000000000000000000000000000000000000",
     mockXBRT: "0x0000000000000000000000000000000000000000",
   },
-  // Base Sepolia — Redeployed 2026-09-24 (FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
+  // Base Sepolia — Redeployed 2026-09-24 (FreelancerEscrow re-redeployed 2026-10-16: F-T1 + gig-deadline bound)
   [CHAIN_CONFIG.baseSepolia.id]: {
     digitalGoods: "0x89f5394a468343F405285040664Fd77843D2a2e6",
-    freelancerEscrow: "0x2Da8486d0bC8E44E23eF02a3760745FC0b57B5E2",
+    freelancerEscrow: "0x756CF434FAB30A18117810B9dC3a8f7F68e891DB",
     digitalRWA: "0x5582496273a71E60e457D19773050CC848A2F52C",
     govToken: "0xc550F40566C2aFEe6980aC3d64b9B3A2A0B8b914",
     feeDistributor: "0xcc5f9C02cD093002cE3921180e32f76cE03F01C0",
@@ -68,10 +68,10 @@ export const CONTRACT_ADDRESSES: Record<number, {
     mockXNOBT: "0x0000000000000000000000000000000000000000",
     mockXBRT: "0x0000000000000000000000000000000000000000",
   },
-  // Arbitrum Sepolia — Redeployed 2026-09-24 (FreelancerEscrow re-redeployed 2026-10-12 for F-T1)
+  // Arbitrum Sepolia — Redeployed 2026-09-24 (FreelancerEscrow re-redeployed 2026-10-16: F-T1 + gig-deadline bound)
   [CHAIN_CONFIG.arbitrumSepolia.id]: {
     digitalGoods: "0x6D6C679279f5C680e5a6ef33306F2e9A78577DCa",
-    freelancerEscrow: "0x18F01543d6D1AF6f80E8624f17bc73666e43525e",
+    freelancerEscrow: "0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952",
     digitalRWA: "0x4eC3777B16FC7Da556B451679A10A8fDFC5Fd48D",
     govToken: "0x2Ad9fFCBC6453B2b7A458bD80747c202F188606D",
     feeDistributor: "0xD63A90d82Fc8c74FbBbE3d9b0516d79985Fe0d71",
