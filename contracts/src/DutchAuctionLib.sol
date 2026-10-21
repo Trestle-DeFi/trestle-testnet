@@ -13,6 +13,14 @@ library DutchAuctionLib {
 
     function validate(uint256 _startPrice, uint256 _reservePrice, uint256 _duration) internal pure {
         if (_startPrice <= _reservePrice || _duration == 0) revert InvalidParams();
+        // TRESTLE-ARFAN-ZERORESERVE-20261021 fix: a zero reserve decays
+        // `currentPrice()` to 0 after the auction elapses, so `buy` accepts a
+        // 0-wei payment (`msg.value < 0` can never fire), records the sale
+        // with `escrowedAmount == 0`, and every settlement path then reverts
+        // `NoRefundNeeded` — the listing becomes terminal (free acquisition
+        // + permanent deadlock). Reject the zero-reserve configuration at
+        // creation instead.
+        if (_reservePrice == 0) revert InvalidParams();
     }
 
     /// @notice Current Dutch-auction price.

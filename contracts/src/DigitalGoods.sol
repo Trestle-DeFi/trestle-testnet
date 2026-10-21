@@ -45,6 +45,12 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
     mapping(uint256 => Listing) public listings;
     mapping(uint256 => string) public deliveryHashes;
     mapping(address => bool) public allowedTokens;
+    /// @dev TRST-03 fix: Σ escrowedAmount actually held per token (address(0) =
+    ///      native). Feeds `sweepStuck` and keeps the invariant
+    ///      `escrowed (owed) <= token.balanceOf(this)` auditable on-chain.
+    mapping(address => uint256) public totalEscrowed;
+
+    event EscrowSwept(address indexed token, address indexed to, uint256 amount);
 
     /// @dev Optional UserProfile integration. address(0) = hooks skipped.
     address public userProfile;
@@ -70,6 +76,12 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
     error ZeroAddress();
     error TransferFailed();
     error TokenNotAllowed();
+    /// @dev TRST-03 fix: a fee-on-transfer (taxed) token MUST deliver at least
+    ///      `price` to the escrow — before this guard, `escrowedAmount = price`
+    ///      was recorded while strictly less arrived, making every exit path
+    ///      (buyer refund, seller release, owner arbitration) permanently
+    ///      revert with no sweep function. Fail loudly at purchase instead.
+    error InsufficientReceived();
 
     constructor(address _treasury) Ownable(msg.sender) {
         if (_treasury == address(0)) revert ZeroAddress();
@@ -181,6 +193,12 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (msg.sender == l.seller) revert WrongStatus();
 
         uint256 price = currentPrice(_id);
+        // TRESTLE-ARFAN-ZERORESERVE-20261021 fix: defence in depth. A zero
+        // price (decayed to reserve, or an empty storage slot — the enum
+        // default `Active` makes a nonexistent id look buyable) can never be
+        // escrowed, so it must never be sold — also closes the phantom-id
+        // footgun that wrote dead `Sold` state on empty slots.
+        if (price == 0) revert PriceTooLow();
         if (msg.value < price) revert PriceTooLow();
 
         l.status = ListingStatus.Sold;
@@ -189,6 +207,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         // E-4 fix: escrow the FULL price; the platform fee is collected only when
         // the sale is finally released to the seller, so buyer refunds are 100%.
         l.escrowedAmount = price;
+        totalEscrowed[address(0)] += price; // TRST-03 fix: obligation tracked
         l.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
 
         uint256 excess = msg.value - price;
@@ -202,6 +221,11 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         _notifyInteracted(l.seller);
     }
 
+    /// @dev TRST-03 fix: measure the tokens the escrow ACTUALLY received via
+    ///      balance-delta, require it to cover `price`, escrow `price`, and
+    ///      refund the net surplus the contract holds (`received - price`, not
+    ///      the nominal `_amount - price`, so the post-refund balance stays
+    ///      exactly `escrowedAmount <= balanceOf(this)` even for taxed tokens).
     function buyWithToken(uint256 _id, address _token, uint256 _amount) external nonReentrant {
         if (!allowedTokens[_token]) revert TokenNotAllowed();
         Listing storage l = listings[_id];
@@ -209,17 +233,31 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (msg.sender == l.seller) revert WrongStatus();
 
         uint256 price = currentPrice(_id);
+        // TRESTLE-ARFAN-ZERORESERVE-20261021 fix: same zero-price guard as
+        // `buy` — a zero-clearing token purchase would escrow 0 tokens and
+        // strand the listing identically.
+        if (price == 0) revert PriceTooLow();
         if (_amount < price) revert PriceTooLow();
 
+        uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        uint256 received = IERC20(_token).balanceOf(address(this)) - balanceBefore;
+        // A fee-on-transfer skim below `price` leaves the escrow permanently
+        // insolvent — every exit path would revert. Reject the purchase.
+        if (received < price) revert InsufficientReceived();
+
         l.status = ListingStatus.Sold;
         l.buyer = msg.sender;
         l.paymentToken = _token;
         l.escrowedAmount = price; // E-4 fix: full price escrowed, fee taken at release
+        totalEscrowed[_token] += price; // TRST-03 fix: obligation tracked
         l.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
 
-        if (_amount > price) {
-            IERC20(_token).safeTransfer(msg.sender, _amount - price);
+        // Refund only the SURPLUS the escrow actually holds above its
+        // obligation — pre-fix, refunding the nominal `_amount - price`
+        // double-counted transfer fees and left `balance < escrowedAmount`.
+        if (received > price) {
+            IERC20(_token).safeTransfer(msg.sender, received - price);
         }
 
         emit Purchased(_id, msg.sender, price);
@@ -255,6 +293,14 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (block.timestamp > l.disputeDeadline) revert WrongStatus();
 
         l.status = ListingStatus.Disputed;
+        // TRESTLE-JKO4-ZEROSECOND-20261020 fix: refresh the arbitration window
+        // on dispute. Previously the deadline was never reset, so at the exact
+        // deadline second `dispute()` (t <= deadline) and the fallback
+        // `resolveAfterTimeout()` (t >= deadline) were simultaneously valid —
+        // an attacker buying a listing could atomically call both in one tx
+        // and refund 100% of the escrow to themselves (free-riding) with zero
+        // arbitration. Mirrors the FreelancerEscrow pattern.
+        l.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
         emit Disputed(_id);
     }
 
@@ -308,11 +354,35 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         emit Cancelled(_id);
     }
 
+    /// @notice TRST-03 hardening: sweep tokens held BEYOND tracked escrow
+    ///         obligations (e.g. stranded balances or a FoT legacy escrow from
+    ///         the pre-fix deployment) to the treasury. Escrowed funds are
+    ///         never touchable — only the surplus above `totalEscrowed`.
+    /// @param _token Token to sweep (address(0) = native surplus).
+    function sweepStuck(address _token, address _to) external onlyOwner nonReentrant {
+        if (_to == address(0)) revert ZeroAddress();
+        uint256 balance = _token == address(0)
+            ? address(this).balance
+            : IERC20(_token).balanceOf(address(this));
+        uint256 owed = totalEscrowed[_token];
+        if (balance <= owed) revert NoRefundNeeded();
+        uint256 amount = balance - owed;
+
+        if (_token == address(0)) {
+            (bool sent,) = _to.call{value: amount}("");
+            if (!sent) revert TransferFailed();
+        } else {
+            IERC20(_token).safeTransfer(_to, amount);
+        }
+        emit EscrowSwept(_token, _to, amount);
+    }
+
     function _releaseToSeller(uint256 _id) private {
         Listing storage l = listings[_id];
         if (l.escrowedAmount == 0) revert NoRefundNeeded();
         uint256 amount = l.escrowedAmount;
         l.escrowedAmount = 0;
+        totalEscrowed[l.paymentToken] -= amount; // TRST-03 fix: obligation released
         // E-4 fix: the platform fee is collected here — at final release — so
         // buyer refunds (_releaseToBuyer) return the full price incl. the fee.
         uint256 fee = (amount * PLATFORM_FEE_BPS) / BPS;
@@ -335,6 +405,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (l.escrowedAmount == 0) revert NoRefundNeeded();
         uint256 amount = l.escrowedAmount;
         l.escrowedAmount = 0;
+        totalEscrowed[l.paymentToken] -= amount; // TRST-03 fix: obligation released
         if (l.paymentToken == address(0)) {
             (bool sent,) = l.buyer.call{value: amount}("");
             if (!sent) revert TransferFailed();

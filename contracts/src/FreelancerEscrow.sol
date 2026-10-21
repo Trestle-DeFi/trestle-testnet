@@ -46,6 +46,10 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         uint256 deadline;
         MilestoneStatus status;
         uint256 submittedAt;
+        // TRST-06 fix: latched on the FIRST submission only — rejects and
+        // resubmissions no longer reset the auto-approval clock. The
+        // freelancer's 14-day timeout is measured from first delivery.
+        uint256 firstSubmittedAt;
         string deliveryHash;
     }
 
@@ -76,6 +80,12 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     uint256 public constant MIN_MILESTONES = 2;
     uint256 public constant MILESTONE_APPROVAL_TIMEOUT = 14 days;
     uint256 public constant DISPUTE_TIMEOUT = 7 days;
+    /// @dev TRST-02 fix: window after `disputeDeadline` during which only the
+    ///      dispute agent may resolve. Participants' `autoResolveDispute` is
+    ///      gated until `disputeDeadline + AGENT_GRACE_PERIOD`, so a slow agent
+    ///      still owns arbitration after the dispute window closes instead of
+    ///      racing a front-running auto-resolve.
+    uint256 public constant AGENT_GRACE_PERIOD = 3 days;
     /// @dev Gig deadline-bound fix (TRESTLE-GIG-DEADLINE-20261015): `createGig`
     ///      and `updateGig` have no duration field and pass `_durationDays == 0`
     ///      to `_validateMilestones`, so the relative deadline cap never fired
@@ -97,6 +107,12 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     bool public yieldEnabled = true;
     address public feeDistributor;
     mapping(uint256 => uint256) public projectShares;
+    /// @dev TRST-05 fix: vault whose shares THIS project's escrow lives in
+    ///      (latched per project at first deposit). Shares are redeemable
+    ///      against their own vault even after `yieldVault` is swapped or
+    ///      detached — restoring admin swap freedom the old single global
+    ///      pointer + `_projectsWithShares` lock removed.
+    mapping(uint256 => address) public projectVault;
     /// @dev E-2 fix: number of projects with unredeemed vault shares. Blocks
     ///      `setYieldVault` swaps while outstanding shares exist (shares are not
     ///      tracked per-vault, so a swap would redeem against the wrong vault).
@@ -155,6 +171,10 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     error ZeroShares();
     error CoarseShares();
     error VaultMigrationBlocked();
+    /// @dev TRST-01 fix: `disputeProject` must not run while a submitted
+    ///      milestone's 14-day auto-approval window has elapsed unclaimed —
+    ///      claiming the milestone first is the intended path.
+    error AutoApprovalPending();
     error SelfAccept();
     error UnsettledObligations();
 
@@ -192,18 +212,22 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         emit TokenAllowed(_token, _allowed);
     }
 
+    /// @dev TRST-05 fix: `address(0)` is a deliberate circuit breaker — detach
+    ///      the vault (new escrow stays in-contract, see `_withdrawFromVault`).
+    ///      The old ZeroAddress revert + `_projectsWithShares` swap-lock left
+    ///      NO admin recovery once a vault malfunctioned (pause/upgrade/etc.).
+    ///      Swaps are now safe at any time: every project redeems against its
+    ///      OWN latched vault (`projectVault[_id]`), not the global pointer, so
+    ///      a swap can no longer redirect outstanding shares to a wrong vault.
     function setYieldVault(address _yieldVault) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_yieldVault == address(0)) revert ZeroAddress();
-        // E-2 fix: block vault swaps while any project still holds shares of the
-        // current vault — `projectShares` is not per-vault, so a swap would make
-        // every payout redeem against the wrong vault and revert.
-        if (_yieldVault != yieldVault && _projectsWithShares > 0) revert VaultMigrationBlocked();
         yieldVault = _yieldVault;
         emit YieldVaultUpdated(_yieldVault);
     }
 
-    /// @notice E-2: number of projects with outstanding vault shares. When
-    ///         non-zero, `setYieldVault` cannot point the contract at a new vault.
+    /// @notice E-2: number of projects with outstanding vault shares. Still
+    ///         gates `migrateEscrow` (the fresh deployment owes nothing of the
+    ///         old vaults), but no longer blocks `setYieldVault` swaps —
+    ///         TRST-05 fix made redemptions per-vault, so swaps are safe.
     function projectsWithShares() external view returns (uint256) {
         return _projectsWithShares;
     }
@@ -320,6 +344,15 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         return total;
     }
 
+    /// @dev TRST-04 fix: engagement-time guard mirroring `hireGig`'s F-4 check
+    ///      — revert if any milestone deadline has already passed.
+    function _requireNoPastDeadlines(Project storage p) private view {
+        uint256 len = p.milestones.length;
+        for (uint256 i; i < len; i++) {
+            if (p.milestones[i].deadline <= block.timestamp) revert PastDeadline();
+        }
+    }
+
     /// @dev TRESTLE-2026-01 fix: when a Dutch-auction project is funded at a
     ///      discounted price, the original milestone amounts (validated against
     ///      maxBudget) exceed the escrowed amount. Scale them proportionally so
@@ -334,8 +367,21 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         uint256 len = p.milestones.length;
         uint256 scaledSum;
         for (uint256 i; i < len; i++) {
+            // TRESTLE-ARFAN-DUTCHBRICK-20261021 fix: the previous
+            // `if (scaled == 0) scaled = 1` bump inflated the obligation —
+            // with a deep discount (escrowed << budget) every floored-to-zero
+            // milestone became 1 wei while the dust correction below only
+            // ADDS, so sum(milestones) could exceed `escrowedAmount`. Both
+            // freelancer entry points carry
+            // `_remainingMilestoneAmount(p) > escrowedAmount → NoFunds`, so the
+            // funded project was permanently un-acceptable (principal only
+            // recoverable via cancelProject). Without the bump,
+            // sum(floor(a_i * escrowed / budget)) <= escrowed holds
+            // mathematically, and the dust-add below restores EXACT equality
+            // — zero-amount early milestones are tolerated on the payout
+            // paths, and the last milestone carries the whole escrow when
+            // every floor rounds to zero.
             uint256 scaled = (p.milestones[i].amount * escrowed) / p.totalBudget;
-            if (scaled == 0) scaled = 1; // prevent zero-amount milestones
             p.milestones[i].amount = scaled;
             scaledSum += scaled;
         }
@@ -354,6 +400,12 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         Project storage p = projects[_id];
         if (!yieldEnabled || yieldVault == address(0) || p.escrowedAmount == 0) return;
         if (_vaultAsset() != p.paymentToken) return;
+        // TRST-05 fix: latch this project's vault. A project whose shares are
+        // outstanding keeps redeeming against the vault they were minted on;
+        // if the global pointer has since moved on, skip its later deposits
+        // (escrow degrades to in-contract holding) rather than mixing vaults.
+        if (projectShares[_id] > 0 && projectVault[_id] != yieldVault) return;
+        if (projectShares[_id] == 0) projectVault[_id] = yieldVault;
         uint256 assets = p.escrowedAmount;
         uint256 sharesBefore = IERC4626(yieldVault).balanceOf(address(this));
         if (p.paymentToken == address(0)) {
@@ -395,7 +447,11 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     {
         if (_principal == 0) return (0, 0);
         uint256 shares = projectShares[_id];
-        if (yieldVault == address(0) || shares == 0) return (_principal, 0); // escrow held in-contract
+        // TRST-05 fix: redeem against the project's OWN vault. Old behavior
+        // (global `yieldVault` + the E-2 swap lock) left every payout bricked
+        // with zero admin recovery when a vault malfunctioned.
+        address vault = projectVault[_id];
+        if (vault == address(0) || shares == 0) return (_principal, 0); // escrow held in-contract
         uint256 escrowed = projects[_id].escrowedAmount;
         if (escrowed == 0) return (0, 0);
 
@@ -404,7 +460,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (sharesOut == 0) sharesOut = 1; // A-2 fix: dust principal still redeems something
         if (sharesOut > shares) sharesOut = shares; // defensive
 
-        uint256 assetsOut = IERC4626(yieldVault).redeem(sharesOut, address(this), address(this));
+        uint256 assetsOut = IERC4626(vault).redeem(sharesOut, address(this), address(this));
         uint256 remaining = shares - sharesOut;
         projectShares[_id] = remaining;
         if (remaining == 0) _projectsWithShares--;
@@ -456,7 +512,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         p.createdAt = block.timestamp;
 
         for (uint256 i; i < _milestoneDescriptions.length; i++) {
-            p.milestones.push(Milestone(_milestoneDescriptions[i], _milestoneAmounts[i], _milestoneDeadlines[i], MilestoneStatus.Pending, 0, ""));
+            p.milestones.push(Milestone(_milestoneDescriptions[i], _milestoneAmounts[i], _milestoneDeadlines[i], MilestoneStatus.Pending, 0, 0, ""));
         }
         emit ProjectCreated(id, msg.sender, _title, _totalBudget);
         _notifyInteracted(msg.sender);
@@ -496,7 +552,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         p.createdAt = block.timestamp;
 
         for (uint256 i; i < _milestoneDescriptions.length; i++) {
-            p.milestones.push(Milestone(_milestoneDescriptions[i], _milestoneAmounts[i], _milestoneDeadlines[i], MilestoneStatus.Pending, 0, ""));
+            p.milestones.push(Milestone(_milestoneDescriptions[i], _milestoneAmounts[i], _milestoneDeadlines[i], MilestoneStatus.Pending, 0, 0, ""));
         }
         emit ProjectCreated(id, msg.sender, _title, _maxBudget);
         _notifyInteracted(msg.sender);
@@ -599,7 +655,7 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
                 g.milestones[i].description,
                 g.milestones[i].amount,
                 g.milestones[i].deadline,
-                MilestoneStatus.Pending, 0, ""
+                MilestoneStatus.Pending, 0, 0, ""
             ));
         }
 
@@ -684,6 +740,10 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         // TRESTLE-2026-01 invariant guard: reject if remaining milestones
         // exceed escrow (should not happen after scaling, but defense-in-depth).
         if (_remainingMilestoneAmount(p) > p.escrowedAmount) revert NoFunds();
+        // TRST-04 fix: mirror `hireGig`'s F-4 engagement-time deadline check —
+        // accepting after a milestone deadline has passed lures the freelancer
+        // into an uncompletable project (`submitMilestone` reverts forever).
+        _requireNoPastDeadlines(p);
 
         p.freelancer = msg.sender;
         p.status = ProjectStatus.InProgress;
@@ -701,6 +761,11 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (msg.sender == p.client) revert SelfAccept(); // E-6 fix
         // TRESTLE-2026-01 invariant guard
         if (_remainingMilestoneAmount(p) > p.escrowedAmount) revert NoFunds();
+        // TRST-04 fix: same engagement-time deadline check as `acceptProject`.
+        // Structural for Dutch auctions: the auction clock and milestone
+        // deadlines are independent, so late funding routinely strands early
+        // milestones before acceptance is denied.
+        _requireNoPastDeadlines(p);
 
         p.freelancer = msg.sender;
         p.status = ProjectStatus.InProgress;
@@ -719,6 +784,10 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
 
         m.status = MilestoneStatus.Submitted;
         m.submittedAt = block.timestamp;
+        // TRST-06 fix: latch the FIRST submission. Reject/resubmit loops no
+        // longer restart the 14-day auto-approval clock (`autoApproveMilestone`
+        // keys on this field), so a client cannot perpetually stall payout.
+        if (m.firstSubmittedAt == 0) m.firstSubmittedAt = block.timestamp;
         m.deliveryHash = _deliveryHash;
         emit MilestoneSubmitted(_id, _milestoneIndex, _deliveryHash);
     }
@@ -754,7 +823,9 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (_milestoneIndex >= p.milestones.length) revert WrongMilestone();
         Milestone storage m = p.milestones[_milestoneIndex];
         if (m.status != MilestoneStatus.Submitted) revert WrongMilestone();
-        if (block.timestamp < m.submittedAt + MILESTONE_APPROVAL_TIMEOUT) revert WrongMilestone();
+        // TRST-06 fix: timeout keys on the FIRST submission, not the latest
+        // resubmission — rejects/resubmits no longer restart the payout clock.
+        if (block.timestamp < m.firstSubmittedAt + MILESTONE_APPROVAL_TIMEOUT) revert WrongMilestone();
         _approveMilestoneLogic(_id, _milestoneIndex);
     }
 
@@ -762,6 +833,20 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         Project storage p = projects[_id];
         if (msg.sender != p.client && msg.sender != p.freelancer) revert NotParticipant();
         if (p.status != ProjectStatus.InProgress) revert WrongStatus();
+        // TRST-01 fix: a dispute must not preempt an elapsed auto-approval —
+        // disputing one block after `submitMilestone` used to freeze the
+        // project in `Disputed` until `autoResolveDispute` refunded the client
+        // 100%, confiscating delivered work. If any submitted milestone's
+        // 14-day window has elapsed unclaimed, the claim must be taken first
+        // (`autoApproveMilestone` is participant-permissionless).
+        uint256 mlen = p.milestones.length;
+        for (uint256 i; i < mlen; i++) {
+            Milestone storage m = p.milestones[i];
+            if (
+                m.status == MilestoneStatus.Submitted
+                    && block.timestamp >= m.firstSubmittedAt + MILESTONE_APPROVAL_TIMEOUT
+            ) revert AutoApprovalPending();
+        }
 
         p.status = ProjectStatus.Disputed;
         p.disputeDeadline = block.timestamp + DISPUTE_TIMEOUT;
@@ -798,7 +883,13 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         Project storage p = projects[_id];
         if (msg.sender != p.client && msg.sender != p.freelancer) revert NotParticipant();
         if (p.status != ProjectStatus.Disputed) revert WrongStatus();
-        if (block.timestamp < p.disputeDeadline) revert WrongStatus();
+        // TRST-02 fix: gate participant auto-resolution until
+        // `disputeDeadline + AGENT_GRACE_PERIOD` so the dispute agent owns
+        // arbitration after the window closes instead of racing a front-run —
+        // previously any participant could auto-resolve the instant the
+        // deadline passed, INVALIDATING a late agent ruling forever
+        // (`resolveDispute` reverts once status leaves `Disputed`).
+        if (block.timestamp < p.disputeDeadline + AGENT_GRACE_PERIOD) revert WrongStatus();
 
         // ZAFRAN-H1 fix (2026-10-06): the old majority-vote heuristic
         // (approvedCount*2 > milestones.length) awarded the ENTIRE remaining

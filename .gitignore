@@ -29,6 +29,11 @@ verify-*.json
 
 # Foundry
 foundry.toml.bak
+broadcast/
+contracts/broadcast/
+contracts/deployments/
+hardhat-deploy-*.json
+deployments-output/
 
 # Slither
 slither/
