@@ -609,7 +609,9 @@ describe("Trestle Protocol — Heavy Test Suite", function () {
       await freelancerEscrow.connect(client).fundProject(1, { value: budget });
       await freelancerEscrow.connect(freelancer).acceptProject(1);
       await freelancerEscrow.connect(client).disputeProject(1);
-      await ethers.provider.send("evm_increaseTime", [8 * 86400]);
+      // TRST-02: participant auto-resolve is gated until disputeDeadline (7d)
+      // + AGENT_GRACE_PERIOD (3d) — warp past the full gate, not just 7d.
+      await ethers.provider.send("evm_increaseTime", [11 * 86400]);
       await ethers.provider.send("evm_mine");
       await freelancerEscrow.connect(freelancer).autoResolveDispute(1);
       expect((await freelancerEscrow.projects(1)).status).to.equal(2);
