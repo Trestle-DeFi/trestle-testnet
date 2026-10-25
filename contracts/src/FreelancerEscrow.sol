@@ -175,6 +175,10 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
     ///      milestone's 14-day auto-approval window has elapsed unclaimed —
     ///      claiming the milestone first is the intended path.
     error AutoApprovalPending();
+    /// @dev BANI-FOT fix: `fundProjectWithToken` must measure the tokens that
+    ///      actually arrive. A fee-on-transfer token skim leaves the escrow
+    ///      insolvent (balance < totalEscrowed) and deadlocks every exit.
+    error InsufficientReceived();
     error SelfAccept();
     error UnsettledObligations();
 
@@ -712,18 +716,22 @@ contract FreelancerEscrow is Ownable, AccessControl, ReentrancyGuard {
         if (p.escrowedAmount > 0) revert MixedPayment();
         uint256 budget = currentBudget(_id);
         if (_amount < budget) revert BudgetTooLow();
-        // E-1 fix: pull the FULL `_amount`, then refund the excess out of what
-        // was just pulled. (Previously only `budget` was pulled while the excess
-        // was refunded from the contract's own balance — letting any client
-        // drain contract-held tokens, e.g. other projects' escrow.)
+        // BANI-FOT fix: measure the tokens that actually arrive. A fee-on-transfer
+        // skim previously left the escrow insolvent (balance < totalEscrowed) and
+        // deadlocked every exit path. Mirrors DigitalGoods.buyWithToken (TRST-03).
+        uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        uint256 received = IERC20(_token).balanceOf(address(this)) - balanceBefore;
+        if (received < budget) revert InsufficientReceived();
         p.paymentToken = _token;
         p.escrowedAmount = budget;
         totalEscrowed[_token] += budget; // migration runbook: obligation tracked
         // TRESTLE-2026-01 fix: scale milestone amounts to match discounted escrow
         _scaleMilestonesForDutch(_id);
-        if (_amount > budget) {
-            IERC20(_token).safeTransfer(msg.sender, _amount - budget);
+        // Refund only the SURPLUS actually held — pre-fix, refunding the nominal
+        // `_amount - budget` double-counted the transfer fee.
+        if (received > budget) {
+            IERC20(_token).safeTransfer(msg.sender, received - budget);
         }
         emit ProjectFunded(_id, msg.sender, budget);
         _depositToVault(_id);

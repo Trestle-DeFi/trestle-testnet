@@ -451,6 +451,108 @@ contract TRSTFixesTest {
         goods.resolveAfterTimeout(id); // existing semantics: Disputed → refund buyer
     }
 
+    // ─────────────────────────── BANI-FOT ───────────────────────────
+
+    /// @notice BANI-FOT regression suite for FreelancerEscrow.fundProjectWithToken.
+    ///         Mirrors the TRST-03 fix already shipped in DigitalGoods.buyWithToken:
+    ///         measure the received amount, revert with InsufficientReceived when
+    ///         below the budget, and refund only the net surplus held. Without it
+    ///         an allowlisted fee-on-transfer token leaves the escrow insolvent
+    ///         and deadlocks every exit path (2nd milestone, dispute resolve both
+    ///         ways, autoResolve, migration).
+    function _createProject(MockERC20 tok, uint256 fundAmt) internal returns (uint256 id) {
+        tok.mint(CLIENT, fundAmt);
+        (string[] memory d, uint256[] memory a, uint256[] memory t) = _milestoneArrays(30 days, 40 days);
+        vm.startPrank(CLIENT);
+        id = escrow.createProjectFixed("P", "u", "g", "c", 60, 1000 ether, d, a, t);
+        tok.approve(address(escrow), fundAmt);
+        vm.stopPrank();
+    }
+
+    function _fund(uint256 id, MockERC20 tok, uint256 fundAmt) internal {
+        vm.startPrank(CLIENT);
+        escrow.fundProjectWithToken(id, address(tok), fundAmt);
+        vm.stopPrank();
+    }
+
+    function _accept(uint256 id) internal {
+        vm.prank(FREELANCER);
+        escrow.acceptProject(id);
+    }
+
+    /// @notice An exact-amount taxed funding is rejected at intake — the escrow
+    ///         must never record an obligation larger than its balance.
+    function test_BANIFOT_exactTaxedFunding_reverts() public {
+        setUpFE();
+        FeeToken tax = new FeeToken("Taxed", "TAX", 1000, COLLECTOR); // 10% fee
+        escrow.setTokenAllowed(address(tax), true);
+        uint256 id = _createProject(tax, 1000 ether);
+
+        vm.expectRevert(); // InsufficientReceived
+        _fund(id, tax, 1000 ether);
+    }
+
+    /// @notice Overpaying a taxed token so received >= budget succeeds, and the
+    ///         refund keeps balance == escrowedAmount (solvent, nothing locks).
+    function test_BANIFOT_overpayTaxedFunding_refundsNetSurplus_solvent() public {
+        setUpFE();
+        FeeToken tax = new FeeToken("Taxed", "TAX", 1000, COLLECTOR); // 10% fee
+        escrow.setTokenAllowed(address(tax), true);
+        uint256 id = _createProject(tax, 1200 ether);
+
+        // send 1200 -> received 1080 >= 1000 budget; refund net 80
+        _fund(id, tax, 1200 ether);
+        _accept(id);
+
+        assertEq(tax.balanceOf(address(escrow)), 1000 ether, "BANI-FOT: escrow solvent");
+        assertEq(escrow.totalEscrowed(address(tax)), 1000 ether, "BANI-FOT: obligation tracked");
+        // The 80-wei net-surplus refund is itself skimmed 10% by the FoT token,
+        // so the client receives 72 back (inherent to FoT tokens, harmless now
+        // that the escrow is solvent — nothing reverts, nothing locks).
+        assertEq(tax.balanceOf(CLIENT), 72 ether, "BANI-FOT: client refunded net 72 (80 skimmed 10%)");
+    }
+
+    /// @notice Control: a normal (0% fee) token flow is untouched.
+    function test_BANIFOT_control_normalToken_fundsFine() public {
+        setUpFE();
+        uint256 id = _createProject(token, 1000 ether);
+        _fund(id, token, 1000 ether);
+        _accept(id);
+
+        assertEq(token.balanceOf(address(escrow)), 1000 ether, "BANI-FOT: control escrow full");
+        assertEq(escrow.totalEscrowed(address(token)), 1000 ether, "BANI-FOT: control obligation");
+    }
+
+    /// @notice End-to-end: with the fix, an insolvent project can no longer be
+    ///         created — every exit path that previously deadlocked now works.
+    ///         (Negative control of the deadlock claim: a solvent project funded
+    ///         with an overpaid taxed token completes and releases cleanly.)
+    function test_BANIFOT_solventProject_completesAndReleases() public {
+        setUpFE();
+        FeeToken tax = new FeeToken("Taxed", "TAX", 1000, COLLECTOR); // 10% fee
+        escrow.setTokenAllowed(address(tax), true);
+        uint256 id = _createProject(tax, 1200 ether);
+        _fund(id, tax, 1200 ether);
+        _accept(id);
+
+        uint256 balBefore = tax.balanceOf(FREELANCER);
+        vm.prank(FREELANCER);
+        escrow.submitMilestone(id, 0, "h0");
+        vm.prank(CLIENT);
+        escrow.approveMilestone(id, 0);
+        vm.prank(FREELANCER);
+        escrow.submitMilestone(id, 1, "h1");
+        vm.prank(CLIENT);
+        escrow.approveMilestone(id, 1);
+
+        // Both milestones paid out. Each 500-unit milestone is skimmed 10% by
+        // the FoT token at release, so the freelancer nets 436.5 per milestone
+        // (873 total) — the 3% platform fee is paid to the treasury in the same
+        // transfer, and the tracked obligation is fully released.
+        assertEq(tax.balanceOf(FREELANCER) - balBefore, 873 ether, "BANI-FOT: freelancer paid both milestones");
+        assertEq(escrow.totalEscrowed(address(tax)), 0, "BANI-FOT: obligation released");
+    }
+
     // ─────────────────────────── ARFAN (zero-reserve Dutch) ───────────────────────────
 
     /// @notice Zero-reserve Dutch listings can no longer be created: the

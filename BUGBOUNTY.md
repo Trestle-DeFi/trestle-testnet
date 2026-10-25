@@ -10,7 +10,7 @@
 
 | Contract | Base Sepolia | Arbitrum Sepolia | Polygon Amoy |
 |----------|--------------|------------------|--------------|
-| FreelancerEscrow | `0xBD551EE22321B500AB171885eb77574943aB65E1` | `0xBeb83e3d78772c3DC32142c590eac8cB39A0aaCA` | `0xc710f53C77698172D43b02cEa72d18B920dE5F9c` |
+| FreelancerEscrow | `0x8FBa99052f1424d205D28b44239F5B376aBd9Be6` | `0x33226359935b5922F834355ced7D49A66825f92C` | `0xd1Fdb92B75DD465eB0808b73BFf6389813aB3b65` |
 | DigitalGoods | `0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952` | `0xa9E7f0762EEC2902cC44577D8F799743A62171c8` | `0x8c99Df55d6fb332eb0B88DE0ba580b9EC3dB28Fb` |
 | DigitalRWA, FeeDistributor, UserProfile, mock tokens | see [`SECURITY.md`](./SECURITY.md) | — | — |
 
@@ -63,6 +63,7 @@ Testnet tokens/tGE are sufficiently available; do not attack the faucet or other
 | iblitzc0de | TRST-01..06 | Dispute preemption, arbitration front-run, fee-on-transfer escrow brick, Dutch deadline skip, vault migration lock, reject-loop clock reset | 6× S3 | ✅ Fixed + tested |
 | joko | JKO-4 | Zero-second dispute window raid (atomic dispute+resolve) | S1 | ✅ Fixed + tested |
 | arfan | ARFAN-1/2 | Zero-reserve Dutch auction terminal state; deep-discount milestone scaling bricks project | 2× S2 | ✅ Fixed + tested |
+| bani | BANI-FOT | `FreelancerEscrow.fundProjectWithToken` fee-on-transfer funding leaves escrow insolvent and deadlocks every exit path | S2 | ✅ Fixed + tested (2026-10-25) |
 
 Full technical write-ups are in the repository commit history (fix markers `TRESTLE-*`).
 
@@ -85,6 +86,6 @@ All confirmed rewards are paid from the program treasury on Polygon mainnet. Ind
 
 ## 6. Hall of Fame (2026)
 
-zafran · ibnu · ihavemage · iblitzc0de · joko · arfan
+zafran · ibnu · ihavemage · iblitzc0de · joko · arfan · bani
 
 > Program completed this cycle with zero exploit-caused fund loss on live testnets; every confirmed finding was patched with regression coverage before its reward left the treasury. Full program rules: [`bounty.md`](https://github.com/Trestle-DeFi/trestle-docs/blob/main/docs/community/bounty.md).

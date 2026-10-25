@@ -63,7 +63,7 @@ Join [reward.trestle.website](https://reward.trestle.website) to validate and cl
 | Contract | Address |
 |----------|---------|
 | DigitalGoods | `0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952` |
-| FreelancerEscrow | `0xBD551EE22321B500AB171885eb77574943aB65E1` |
+| FreelancerEscrow | `0x8FBa99052f1424d205D28b44239F5B376aBd9Be6` |
 | DigitalRWA | `0x5582496273a71E60e457D19773050CC848A2F52C` |
 | FeeDistributor | `0xcc5f9C02cD093002cE3921180e32f76cE03F01C0` |
 | GovernanceToken (tGOV) | `0xc550F40566C2aFEe6980aC3d64b9B3A2A0B8b914` |
@@ -75,7 +75,7 @@ Join [reward.trestle.website](https://reward.trestle.website) to validate and cl
 | Contract | Address |
 |----------|---------|
 | DigitalGoods | `0xa9E7f0762EEC2902cC44577D8F799743A62171c8` |
-| FreelancerEscrow | `0xBeb83e3d78772c3DC32142c590eac8cB39A0aaCA` |
+| FreelancerEscrow | `0x33226359935b5922F834355ced7D49A66825f92C` |
 | DigitalRWA | `0x4eC3777B16FC7Da556B451679A10A8fDFC5Fd48D` |
 | FeeDistributor | `0xD63A90d82Fc8c74FbBbE3d9b0516d79985Fe0d71` |
 | GovernanceToken (tGOV) | `0x2Ad9fFCBC6453B2b7A458bD80747c202F188606D` |
@@ -87,7 +87,7 @@ Join [reward.trestle.website](https://reward.trestle.website) to validate and cl
 | Contract | Address |
 |----------|---------|
 | DigitalGoods | `0x8c99Df55d6fb332eb0B88DE0ba580b9EC3dB28Fb` |
-| FreelancerEscrow | `0xc710f53C77698172D43b02cEa72d18B920dE5F9c` |
+| FreelancerEscrow | `0xd1Fdb92B75DD465eB0808b73BFf6389813aB3b65` |
 | DigitalRWA | `0x7f750E8BD9c9C2685710A03De5307961BC50aF31` |
 | FeeDistributor | `0x4104eA3D55F9C2F5818671e5365F801996D83038` |
 | GovernanceToken (tGOV) | `0x7f411bA9824513a95C591A061F97A0A375B2cB71` |
@@ -131,6 +131,14 @@ Fix: `FreelancerEscrow._depositToVault` reverts `CoarseShares()` unless `sharesA
 | GIG-DEADLINE (Nordin/KupiaSec) | Medium (S3) | `createGig`/`updateGig` have no duration field and pass `_durationDays == 0` to `_validateMilestones`, so the relative deadline cap never fired — a freelancer could commit milestones with deadlines years in the future (zombie escrow), bloating vault share obligations and blocking vault migration | Fixed 2026-10-15 (always-on `MAX_MILESTONE_HORIZON` = 365 days cap when no duration is supplied; redeployed all 3 testnets 2026-10-16) |
 
 Fix: `_validateMilestones` now computes `maxDeadline = _durationDays > 0 ? _durationDays * 1 days : MAX_MILESTONE_HORIZON` and unconditionally enforces `_milestoneDeadlines[i] <= block.timestamp + maxDeadline`, so gig paths (which pass 0) are bounded to 365 days. New FE: Base Sepolia `0x756CF434FAB30A18117810B9dC3a8f7F68e891DB`, Arbitrum Sepolia `0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952`, Polygon Amoy `0xD0de38492b5f5F2D3979DdD798CCE95395140C53` — all source-verified on the explorers (Etherscan API V2, 2026-10-16) and bytecode/wiring-confirmed by `scripts/verify_live_gig.js`.
+
+## Bug Bounty Findings — 2026-10-25 (BANI-FOT fee-on-transfer funding)
+
+| ID | Severity | Title | Status |
+|----|----------|-------|--------|
+| BANI-FOT (Bani) | High (S2) | `FreelancerEscrow.fundProjectWithToken` never measured the tokens that actually arrive — it credited the full budget as escrowed and refunded the nominal excess, so an allowlisted fee-on-transfer token left the escrow insolvent (balance < totalEscrowed) and deadlocked every exit path (2nd milestone, dispute resolve both ways, autoResolve, migration) | Fixed 2026-10-25 (`balanceBefore`/`received` delta guard + new `InsufficientReceived` error + refund of net surplus `received - budget`; 4-test Foundry regression suite; re-deployed + source-verified on all 3 testnets) |
+
+Fix: mirrors the `DigitalGoods.buyWithToken` TRST-03 pattern already in the codebase. New FE: Base Sepolia `0x8FBa99052f1424d205D28b44239F5B376aBd9Be6`, Arbitrum Sepolia `0x33226359935b5922F834355ced7D49A66825f92C`, Polygon Amoy `0xd1Fdb92B75DD465eB0808b73BFf6389813aB3b65` — all source-verified on the explorers (Etherscan API V2, 2026-10-25) and bytecode/wiring-confirmed by `scripts/redeploy_fe_bani.js`.
 
 ## Testnet Review Findings — 2026-09-24 (F-1 … F-9)
 

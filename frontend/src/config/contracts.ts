@@ -42,10 +42,10 @@ export const CONTRACT_ADDRESSES: Record<number, {
   mockXNOBT: `0x${string}`;
   mockXBRT: `0x${string}`;
 }> = {
-  // Polygon Amoy — Redeployed 2026-09-25 (DigitalGoods + FreelancerEscrow re-redeployed 2026-10-21: bug-batch TRST/JKO/ARFAN fixes)
+  // Polygon Amoy — Redeployed 2026-09-25 (DigitalGoods + FreelancerEscrow re-redeployed 2026-10-21: bug-batch TRST/JKO/ARFAN fixes; FreelancerEscrow re-redeployed 2026-10-25: BANI-FOT fee-on-transfer fix)
   [CHAIN_CONFIG.amoy.id]: {
     digitalGoods: "0x8c99Df55d6fb332eb0B88DE0ba580b9EC3dB28Fb",
-    freelancerEscrow: "0xc710f53C77698172D43b02cEa72d18B920dE5F9c",
+    freelancerEscrow: "0xd1Fdb92B75DD465eB0808b73BFf6389813aB3b65",
     digitalRWA: "0x7f750E8BD9c9C2685710A03De5307961BC50aF31",
     govToken: "0x7f411bA9824513a95C591A061F97A0A375B2cB71",
     feeDistributor: "0x4104eA3D55F9C2F5818671e5365F801996D83038",
@@ -55,10 +55,10 @@ export const CONTRACT_ADDRESSES: Record<number, {
     mockXNOBT: "0x0000000000000000000000000000000000000000",
     mockXBRT: "0x0000000000000000000000000000000000000000",
   },
-  // Base Sepolia — Redeployed 2026-09-24 (DigitalGoods + FreelancerEscrow re-redeployed 2026-10-21: bug-batch TRST/JKO/ARFAN fixes)
+  // Base Sepolia — Redeployed 2026-09-24 (DigitalGoods + FreelancerEscrow re-redeployed 2026-10-21: bug-batch TRST/JKO/ARFAN fixes; FreelancerEscrow re-redeployed 2026-10-25: BANI-FOT fee-on-transfer fix)
   [CHAIN_CONFIG.baseSepolia.id]: {
     digitalGoods: "0xdAe47049b5f1D1557a6f3C19Ad17a4C473f91952",
-    freelancerEscrow: "0xBD551EE22321B500AB171885eb77574943aB65E1",
+    freelancerEscrow: "0x8FBa99052f1424d205D28b44239F5B376aBd9Be6",
     digitalRWA: "0x5582496273a71E60e457D19773050CC848A2F52C",
     govToken: "0xc550F40566C2aFEe6980aC3d64b9B3A2A0B8b914",
     feeDistributor: "0xcc5f9C02cD093002cE3921180e32f76cE03F01C0",
@@ -68,10 +68,10 @@ export const CONTRACT_ADDRESSES: Record<number, {
     mockXNOBT: "0x0000000000000000000000000000000000000000",
     mockXBRT: "0x0000000000000000000000000000000000000000",
   },
-  // Arbitrum Sepolia — Redeployed 2026-09-24 (DigitalGoods + FreelancerEscrow re-redeployed 2026-10-21: bug-batch TRST/JKO/ARFAN fixes)
+  // Arbitrum Sepolia — Redeployed 2026-09-24 (DigitalGoods + FreelancerEscrow re-redeployed 2026-10-21: bug-batch TRST/JKO/ARFAN fixes; FreelancerEscrow re-redeployed 2026-10-25: BANI-FOT fee-on-transfer fix)
   [CHAIN_CONFIG.arbitrumSepolia.id]: {
     digitalGoods: "0xa9E7f0762EEC2902cC44577D8F799743A62171c8",
-    freelancerEscrow: "0xBeb83e3d78772c3DC32142c590eac8cB39A0aaCA",
+    freelancerEscrow: "0x33226359935b5922F834355ced7D49A66825f92C",
     digitalRWA: "0x4eC3777B16FC7Da556B451679A10A8fDFC5Fd48D",
     govToken: "0x2Ad9fFCBC6453B2b7A458bD80747c202F188606D",
     feeDistributor: "0xD63A90d82Fc8c74FbBbE3d9b0516d79985Fe0d71",
