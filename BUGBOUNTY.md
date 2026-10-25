@@ -79,8 +79,9 @@ All confirmed rewards are paid from the program treasury on Polygon mainnet. Ind
 | 2026-10-21 | 140,000 hNOBT | [tx](https://polygonscan.com/tx/0xb21b14b1885a3f8cbcd6d4097e2e7c3a920f4a1e187c3925082e3adf524b0f50) |
 | 2026-10-21 | 120,000 hNOBT | [tx](https://polygonscan.com/tx/0xdf4e27179b0375d513b2ec3ed6c04ab564a0ebd84b9b9ec10757cdd694fdcdb0) |
 | 2026-10-21 | 100,000 hNOBT | [tx](https://polygonscan.com/tx/0x09d11e969a2df5a7342fcd276862f3379adf67caa5dd674c560bddb63de47ed1) |
+| 2026-10-25 | 100,000 hNOBT | [tx](https://polygonscan.com/tx/0xcba5cb889b13a9d98a66e5b014af90f9d7b31311aab40c2fc3ee3978aae250fa) |
 
-**Program totals (2026-10-21): 410,000 hNOBT paid · 6 confirmed hunters · 12 resolved findings.**
+**Program totals (2026-10-25): 510,000 hNOBT paid · 7 confirmed hunters · 13 resolved findings.**
 
 ---
 
