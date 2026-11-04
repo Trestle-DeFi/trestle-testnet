@@ -337,7 +337,7 @@ contract TRSTFixesTest {
         uint256 before = tax.balanceOf(CLIENT);
         vm.prank(CLIENT);
         goods.dispute(id);
-        vm.warp(tBuy + 7 days + 1);
+        vm.warp(tBuy + 7 days + 121 seconds);
         vm.prank(CLIENT);
         goods.resolveAfterTimeout(id);
         // The 100e18 refund transfer is itself skimmed 3% by the taxed token —
@@ -362,7 +362,7 @@ contract TRSTFixesTest {
 
         vm.prank(CLIENT);
         goods.dispute(id);
-        vm.warp(tBuy + 7 days + 1);
+        vm.warp(tBuy + 7 days + 121 seconds);
         vm.prank(CLIENT);
         goods.resolveAfterTimeout(id);
         assertEq(plain.balanceOf(CLIENT), 100 ether, "TRST03: full refund");
@@ -435,7 +435,7 @@ contract TRSTFixesTest {
         uint256 t0 = block.timestamp;
         uint256 Tdispute = t0 + 6 days;   // pre-dispute in-window
         uint256 Tlate = t0 + 7 days + 1;  // old deadline passed
-        uint256 Tfresh = t0 + 13 days + 1; // refreshed deadline (6d + 7d)
+        uint256 Tfresh = t0 + 13 days + 121 seconds; // refreshed deadline (6d + 7d) + release delay
 
         vm.warp(Tdispute);
         vm.prank(CLIENT);

@@ -122,6 +122,7 @@ contract UserProfile is Ownable, EIP712 {
     event ScoreAttested(address indexed user, uint8 scoreType, uint8 score);
     event AttesterUpdated(address indexed attester);
     event PlatformContractUpdated(address indexed platform, bool enabled);
+    event ProfileMigrated(address indexed newProfile);
 
     // ───────────────────────── Errors ─────────────────────────
 
@@ -480,5 +481,10 @@ contract UserProfile is Ownable, EIP712 {
         uint256 reviewPct = _reviews[user].length > 0 ? reviewScore(user) : 0;
 
         return uint8((profilePct * 40 + passportPct * 15 + bioPct * 15 + thirdPct * 15 + reviewPct * 15) / 100);
+    }
+    /// @notice Migration hook: announce a new UserProfile deployment for off-chain migration.
+    function migrateProfile(address payable _newProfile) external onlyOwner {
+        if (_newProfile == address(0)) revert ZeroAddress();
+        emit ProfileMigrated(_newProfile);
     }
 }

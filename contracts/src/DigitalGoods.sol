@@ -38,6 +38,7 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
 
     uint256 public listingCount;
     uint256 public constant DISPUTE_TIMEOUT = 7 days;
+    uint256 public constant RELEASE_DELAY = 120; // seconds
     uint256 public constant PLATFORM_FEE_BPS = 300;
     uint256 public constant BPS = 10000;
 
@@ -310,8 +311,9 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         if (l.status != ListingStatus.Disputed && l.status != ListingStatus.Sold) revert WrongStatus();
         if (l.deliveryConfirmed) revert AlreadyConfirmed();
         if (block.timestamp < l.disputeDeadline) revert WrongStatus();
+        if (block.timestamp < l.disputeDeadline + RELEASE_DELAY) revert WrongStatus();
 
-        bool toSeller = l.status == ListingStatus.Sold;
+        bool toSeller = l.status == ListingStatus.Sold && bytes(deliveryHashes[_id]).length > 0;
         if (toSeller) {
             l.deliveryConfirmed = true;
             _releaseToSeller(_id);
@@ -412,5 +414,27 @@ contract DigitalGoods is Ownable, ReentrancyGuard {
         } else {
             IERC20(l.paymentToken).safeTransfer(l.buyer, amount);
         }
+    }
+
+    /// @notice Migration runbook: sweep idle surplus of `_token` (address(0)=native)
+    ///         to a fresh deployment. Reverts unless all escrow obligations settled.
+    function migrateGoods(address payable _newGoods, address _token)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        if (_newGoods == address(0)) revert ZeroAddress();
+        if (totalEscrowed[_token] > 0) revert NoRefundNeeded();
+
+        uint256 amount = _token == address(0) ? address(this).balance : IERC20(_token).balanceOf(address(this));
+        if (amount == 0) revert NoRefundNeeded();
+
+        if (_token == address(0)) {
+            (bool ok,) = _newGoods.call{value: amount}('');
+            if (!ok) revert TransferFailed();
+        } else {
+            IERC20(_token).safeTransfer(_newGoods, amount);
+        }
+        emit EscrowSwept(_token, _newGoods, amount);
     }
 }

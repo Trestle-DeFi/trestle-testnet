@@ -47,6 +47,7 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
     /// @dev Joop reply (item 7): max accepted relative price move per sync, in
     ///      percent — blunts a compromised/manipulated feed. Admin
     ///      `setManualPrice` intentionally bypasses this check.
+    uint256 public constant RELEASE_DELAY = 120;
     uint256 public constant MAX_PRICE_DEVIATION_PCT = 20;
 
     mapping(address => bool) public manualWhitelist;
@@ -275,5 +276,24 @@ contract DigitalRWA is ERC20, ERC20Burnable, ERC20Pausable, AccessControl, Reent
         if (_from != address(0) && !isWhitelisted(_from)) revert NotWhitelisted();
         if (_to != address(0) && _from != address(0) && !isWhitelisted(_to)) revert NotWhitelisted();
         super._update(_from, _to, _value);
+    }
+    /// @notice Migration runbook: sweep idle surplus of token to a fresh deployment.
+    function migrateRWA(address payable _newRWA, address _token)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        nonReentrant
+    {
+        if (_newRWA == address(0)) revert ZeroAddress();
+        if (totalSupply() > 0) revert CapExceeded();
+
+        uint256 amount = _token == address(0) ? address(this).balance : IERC20(_token).balanceOf(address(this));
+        if (amount == 0) revert InsufficientBalance();
+
+        if (_token == address(0)) {
+            (bool ok,) = _newRWA.call{value: amount}("");
+            if (!ok) revert TransferFailed();
+        } else {
+            IERC20(_token).transfer(_newRWA, amount);
+        }
     }
 }

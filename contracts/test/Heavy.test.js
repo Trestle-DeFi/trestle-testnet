@@ -436,7 +436,7 @@ describe("Trestle Protocol — Heavy Test Suite", function () {
       await ethers.provider.send("evm_increaseTime", [8 * 86400]);
       await ethers.provider.send("evm_mine");
       await digitalGoods.connect(buyer).resolveAfterTimeout(1);
-      expect((await digitalGoods.listings(1)).status).to.equal(1); // Sold (released to seller)
+      expect((await digitalGoods.listings(1)).status).to.equal(4); // Refunded (no delivery submitted)
     });
 
     it("seller cancels before purchase", async function () {

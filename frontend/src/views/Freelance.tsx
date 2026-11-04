@@ -36,6 +36,8 @@ export default function Freelance() {
   const [gigMsDesc, setGigMsDesc] = useState("Design,Develop,Deploy");
   const [gigMsAmt, setGigMsAmt] = useState("0.000003,0.000004,0.000003");
   const [gigMsDur, setGigMsDur] = useState("7,14,21");
+  const [gigStartDate, setGigStartDate] = useState("");
+  const [gigEndDate, setGigEndDate] = useState("");
 
   // ── Create Project form ──
   const [projTitle, setProjTitle] = useState("Build a DApp");
@@ -47,6 +49,8 @@ export default function Freelance() {
   const [projMsDesc, setProjMsDesc] = useState("Frontend,Smart Contract,Testing");
   const [projMsAmt, setProjMsAmt] = useState("0.00001,0.00001,0.00001");
   const [projMsDur, setProjMsDur] = useState("14,21,7");
+  const [projStartDate, setProjStartDate] = useState("");
+  const [projEndDate, setProjEndDate] = useState("");
 
   // Zero-API IPFS generation helper
   async function generateIpfsForGig() {
@@ -73,6 +77,13 @@ export default function Freelance() {
     } catch (e: any) {
       console.error(e);
     }
+  }
+
+  function daysBetween(start: string, end: string): number {
+    if (!start || !end) return 0;
+    const s = new Date(start).getTime();
+    const e = new Date(end).getTime();
+    return Math.max(0, Math.ceil((e - s) / (1000 * 60 * 60 * 24)));
   }
 
   function parseMilestones(descs: string, amounts: string, durs: string) {
@@ -121,6 +132,8 @@ export default function Freelance() {
     if (invalid) { setError(invalid); return; }
     setBusy(true); setTxHash(""); setError("");
     try {
+      const computedDuration = projStartDate && projEndDate ? daysBetween(projStartDate, projEndDate) : Number(projDurationDays || 0);
+      if (computedDuration > 0) setProjDurationDays(String(computedDuration));
       const { descs, amounts, deadlines } = parseMilestones(projMsDesc, projMsAmt, projMsDur);
       const hash = await writeContractAsync({
         abi: freelancerEscrowABI, address: addr,
@@ -478,7 +491,9 @@ export default function Freelance() {
             { label: "Description URI (ipfs://...)", val: projDesc, set: setProjDesc, hasGenerate: true, onGen: generateIpfsForProject },
             { label: "GitHub / Repo (optional)", val: projGithub, set: setProjGithub },
             { label: "Category (optional)", val: projCategory, set: setProjCategory },
-            { label: "Duration (days, optional)", val: projDurationDays, set: setProjDurationDays, type: "number" },
+            { label: "Start Date", val: projStartDate, set: setProjStartDate, type: "date" },
+            { label: "End Date", val: projEndDate, set: setProjEndDate, type: "date" },
+            { label: "Duration (days, computed)", val: projDurationDays, set: setProjDurationDays, type: "number" },
             { label: `Total Budget (${chainCurrency})`, val: projBudget, set: setProjBudget, type: "number" },
             { label: "Milestone Descriptions (comma-sep)", val: projMsDesc, set: setProjMsDesc },
             { label: "Milestone Amounts (comma-sep)", val: projMsAmt, set: setProjMsAmt },
