@@ -29,15 +29,12 @@ async function main() {
   const digitalGoods = await hre.ethers.getContractAt('DigitalGoods', addresses.digitalGoods);
   const freelancerEscrow = await hre.ethers.getContractAt('FreelancerEscrow', addresses.freelancerEscrow);
   
-  const dp = await userProfile.platformContracts(addresses.digitalGoods);
-  const fp = await userProfile.platformContracts(addresses.freelancerEscrow);
-  
-  console.log(`${network}:`);
-  console.log(`  DigitalGoods platform: ${dp.toString()}`);
-  console.log(`  FreelancerEscrow platform: ${fp.toString()}`);
+  console.log(`${network} Platform Status:`);
+  console.log(`  DigitalGoods platform: ${await userProfile.platformContracts(digitalGoods.address)}`);
+  console.log(`  FreelancerEscrow platform: ${await userProfile.platformContracts(freelancerEscrow.address)}`);
 }
 
 main().then(() => process.exit(0)).catch(err => {
-  console.error(err);
+  console.error('Error:', err.message);
   process.exit(1);
 });
